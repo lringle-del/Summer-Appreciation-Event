@@ -336,6 +336,7 @@ function handleFile(e){
       if(!records.length){alert("Couldn't find any registrations in that file. Make sure it's the Microsoft Forms export (with the 'First and Last Name', 'Email Address' and 'Which location' columns).");return;}
       DATA=records; setStamp(); render();
       document.getElementById("noticeBar").textContent=`Loaded ${records.length} registrations from "${file.name}"${dropped?` · ${dropped} test/blank rows skipped`:""}.`;
+      publishLive(records, file.name);
     }catch(err){alert("Sorry — I couldn't read that file. Please upload the .xlsx or .csv export from Microsoft Forms.\n\n"+err.message);}
   };
   reader.readAsArrayBuffer(file);
@@ -354,6 +355,64 @@ function exportCSV(){
 
 setStamp();
 render();
+loadLiveData();
+
+/* ---------- Live shared data (Vercel serverless + Blob storage) ---------- */
+/* On load, show the latest published data so everyone sees the same list.
+   Falls back silently to the data baked into this page if the backend
+   isn't set up yet. */
+async function loadLiveData(){
+  try{
+    const r = await fetch("/api/data",{cache:"no-store"});
+    if(!r.ok) return;
+    const j = await r.json();
+    if(j && Array.isArray(j.records) && j.records.length){
+      DATA = j.records;
+      if(j.updatedAt){
+        const d = new Date(j.updatedAt);
+        document.getElementById("loadedStamp").textContent =
+          d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" · "+
+          d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+      }
+      render();
+      document.getElementById("noticeBar").textContent =
+        `Showing the latest published data · ${j.records.length} registrations.`;
+    }
+  }catch(e){ /* offline or backend not configured — keep the built-in data */ }
+}
+
+/* Publish an uploaded file so it becomes live for everyone. Prompts once for
+   the passcode (kept for the browser session). Blank passcode = update only
+   your own view without publishing. */
+async function publishLive(records, fileName){
+  const bar = document.getElementById("noticeBar");
+  let pass = sessionStorage.getItem("rsvp_pass");
+  if(!pass){
+    pass = prompt("Enter the publish passcode to make this live for everyone.\n\n(Leave blank to update only your own view.)") || "";
+  }
+  if(!pass){
+    bar.textContent = `Loaded ${records.length} from "${fileName}" — visible only in your browser (not published).`;
+    return;
+  }
+  bar.textContent = `Publishing ${records.length} registrations for everyone…`;
+  try{
+    const r = await fetch("/api/data",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-upload-passcode":pass},
+      body: JSON.stringify({records})
+    });
+    const j = await r.json().catch(()=>({}));
+    if(r.ok){
+      sessionStorage.setItem("rsvp_pass", pass);
+      bar.textContent = `✓ Published live for everyone · ${records.length} registrations from "${fileName}".`;
+    }else{
+      if(r.status===401){ sessionStorage.removeItem("rsvp_pass"); }
+      bar.textContent = `Couldn't publish (${j.error||("HTTP "+r.status)}). Your own view is updated, but it isn't live yet.`;
+    }
+  }catch(e){
+    bar.textContent = `Couldn't reach the server to publish (${e.message}). Your own view is updated, but it isn't live yet.`;
+  }
+}
 </script>
 </body>
 </html>
