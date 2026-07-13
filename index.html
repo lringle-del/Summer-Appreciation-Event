@@ -6,40 +6,40 @@
 <title>Summer BBQ RSVPs · Above &amp; Beyond ABA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     /* Brand palette */
-    --vanilla:#FBF6EC; --biscuit:#EFE1C7; --parchment:#F4ECDD;
-    --sungold:#F2A93B; --sunset:#E8743B; --clay:#BE5A31;
-    --sky:#8FC1DA; --lagoon:#2E6BA6; --midnight:#1F3A6E;
-    --ink:#1F3A6E; --muted:#5b6577; --line:#e6dcc8;
+    --vanilla:#f5f0e5; --biscuit:#e8dbc4; --parchment:#ebd1ab;
+    --sungold:#ffb254; --sunset:#ff8f30; --clay:#de5730;
+    --sky:#8abaff; --lagoon:#457acc; --midnight:#1c458c;
+    --ink:#1c458c; --muted:#5f6b7a; --line:#e3d6bd;
     --white:#ffffff;
-    --shadow:0 1px 2px rgba(31,58,110,.07),0 8px 24px rgba(31,58,110,.07);
+    --shadow:0 1px 2px rgba(28,69,140,.08),0 8px 24px rgba(28,69,140,.07);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
-    font-family:'Manrope',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-family:'Neue Montreal','Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     background:var(--vanilla); color:var(--ink);
     -webkit-font-smoothing:antialiased; line-height:1.5;
   }
-  h1,h2,h3,.display{font-family:'Libre Caslon Display',Georgia,serif;font-weight:400;letter-spacing:.2px}
+  h1,h2,h3,.display{font-family:'Libre Caslon Condensed','Libre Caslon Display',Georgia,serif;font-weight:400;letter-spacing:.2px}
   .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
 
   /* Header */
-  header.brand{background:var(--midnight);color:var(--vanilla);padding:26px 0 24px}
+  header.brand{background:var(--vanilla);color:var(--ink);padding:22px 0 26px;border-bottom:1px solid var(--line)}
   .brand-row{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
-  .logo{display:flex;align-items:center;gap:14px}
-  .logo .mark{width:54px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .logo .mark svg{width:100%;height:100%;display:block}
-  .logo .name{font-family:'Libre Caslon Display',serif;font-size:22px;line-height:1;color:var(--vanilla)}
-  .logo .tag{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--sky);margin-top:5px}
-  .updated{font-size:12.5px;color:var(--sky);text-align:right}
-  .updated b{color:var(--vanilla)}
-  h1.title{font-size:40px;margin:22px 0 4px;color:var(--vanilla)}
-  .subtitle{color:var(--sky);font-size:15px;max-width:640px}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo .mark{width:62px;height:58px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo .mark svg{width:100%;height:100%;display:block;overflow:visible}
+  .logo .name{font-family:'Fredoka','Inter',sans-serif;font-weight:600;font-size:27px;line-height:.95;color:#141414;letter-spacing:-.01em}
+  .logo .tag{font-family:'Neue Montreal','Inter',sans-serif;font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:#141414;font-weight:600;margin-top:4px}
+  .updated{font-size:12.5px;color:var(--muted);text-align:right}
+  .updated b{color:var(--ink)}
+  h1.title{font-size:40px;margin:22px 0 4px;color:var(--midnight)}
+  .subtitle{color:var(--muted);font-size:15px;max-width:640px}
 
   /* Stat tiles */
   .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:26px 0 6px}
@@ -118,25 +118,36 @@
     <div class="brand-row">
       <div class="logo">
         <div class="mark">
-          <svg viewBox="0 0 52 46" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Above &amp; Beyond ABA Therapy logo">
+          <svg viewBox="0 0 260 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Above &amp; Beyond ABA Therapy logo">
             <!-- arc -->
-            <path d="M4 34 A22 22 0 0 1 48 34" fill="none" stroke="#8FC1DA" stroke-width="3.4" stroke-linecap="round"/>
+            <g fill="none" stroke="#a7c9ee" stroke-linecap="round">
+              <path d="M40 236 C 30 150, 46 66, 112 52" stroke-width="15"/>
+              <path d="M220 236 C 230 150, 214 66, 148 52" stroke-width="15"/>
+            </g>
             <!-- star -->
-            <path d="M26 3 l2.1 4.3 4.7.7 -3.4 3.3 .8 4.7 -4.2-2.2 -4.2 2.2 .8-4.7 -3.4-3.3 4.7-.7z" fill="#F4B23C"/>
-            <!-- left figure (blue) -->
-            <g stroke="#2E6BA6" stroke-width="2.3" stroke-linecap="round" fill="none">
-              <path d="M19 23 L14.4 18.6 M19 23 L23.6 18.6 M19 23 V28.5 M19 28.5 L15.4 33 M19 28.5 L22.6 33"/>
+            <path fill="#f59e2c" d="M130 20 l10 20.4 22.5 3.3 -16.3 15.9 3.8 22.4 -20.1-10.6 -20.1 10.6 3.8-22.4 -16.3-15.9 22.5-3.3z"/>
+            <!-- left figure (light blue) -->
+            <g fill="none" stroke="#9cc0ea" stroke-linecap="round">
+              <circle cx="98" cy="124" r="12" fill="#9cc0ea" stroke="none"/>
+              <path d="M98 138 L98 172" stroke-width="14"/>
+              <path d="M98 146 L79 126" stroke-width="12"/>
+              <path d="M98 146 L117 122" stroke-width="12"/>
+              <path d="M98 172 L83 198" stroke-width="12"/>
+              <path d="M98 172 L112 197" stroke-width="12"/>
             </g>
-            <circle cx="19" cy="18.6" r="3.1" fill="#2E6BA6"/>
-            <!-- right figure (orange) -->
-            <g stroke="#E8743B" stroke-width="2.3" stroke-linecap="round" fill="none">
-              <path d="M33 23 L28.4 18.6 M33 23 L37.6 18.6 M33 23 V28.5 M33 28.5 L29.4 33 M33 28.5 L36.6 33"/>
+            <!-- right figure (medium blue) -->
+            <g fill="none" stroke="#4c86c6" stroke-linecap="round">
+              <circle cx="152" cy="102" r="16" fill="#4c86c6" stroke="none"/>
+              <path d="M152 122 L151 168" stroke-width="18"/>
+              <path d="M152 130 L127 104" stroke-width="15"/>
+              <path d="M152 130 L180 102" stroke-width="15"/>
+              <path d="M151 168 L132 200" stroke-width="15"/>
+              <path d="M151 168 L170 198" stroke-width="15"/>
             </g>
-            <circle cx="33" cy="18.6" r="3.1" fill="#E8743B"/>
           </svg>
         </div>
         <div>
-          <div class="name">Above &amp; Beyond ABA</div>
+          <div class="name">above &amp; beyond</div>
           <div class="tag">ABA Therapy</div>
         </div>
       </div>
