@@ -13,10 +13,10 @@
     /* Brand palette */
     --vanilla:#FBF6EC; --biscuit:#EFE1C7; --parchment:#F4ECDD;
     --sungold:#F2A93B; --sunset:#E8743B; --clay:#BE5A31;
-    --sky:#8DBFD0; --lagoon:#2E7D8F; --midnight:#173139;
-    --ink:#173139; --muted:#5c6f74; --line:#e6dcc8;
+    --sky:#8FC1DA; --lagoon:#2E6BA6; --midnight:#1F3A6E;
+    --ink:#1F3A6E; --muted:#5b6577; --line:#e6dcc8;
     --white:#ffffff;
-    --shadow:0 1px 2px rgba(23,49,57,.06),0 8px 24px rgba(23,49,57,.06);
+    --shadow:0 1px 2px rgba(31,58,110,.07),0 8px 24px rgba(31,58,110,.07);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -32,7 +32,8 @@
   header.brand{background:var(--midnight);color:var(--vanilla);padding:26px 0 24px}
   .brand-row{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
   .logo{display:flex;align-items:center;gap:14px}
-  .logo .mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--sungold),var(--sunset));display:flex;align-items:center;justify-content:center;font-family:'Libre Caslon Display',serif;font-size:24px;color:var(--midnight);box-shadow:var(--shadow)}
+  .logo .mark{width:54px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo .mark svg{width:100%;height:100%;display:block}
   .logo .name{font-family:'Libre Caslon Display',serif;font-size:22px;line-height:1;color:var(--vanilla)}
   .logo .tag{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--sky);margin-top:5px}
   .updated{font-size:12.5px;color:var(--sky);text-align:right}
@@ -116,10 +117,27 @@
   <div class="wrap">
     <div class="brand-row">
       <div class="logo">
-        <div class="mark">A</div>
+        <div class="mark">
+          <svg viewBox="0 0 52 46" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Above &amp; Beyond ABA Therapy logo">
+            <!-- arc -->
+            <path d="M4 34 A22 22 0 0 1 48 34" fill="none" stroke="#8FC1DA" stroke-width="3.4" stroke-linecap="round"/>
+            <!-- star -->
+            <path d="M26 3 l2.1 4.3 4.7.7 -3.4 3.3 .8 4.7 -4.2-2.2 -4.2 2.2 .8-4.7 -3.4-3.3 4.7-.7z" fill="#F4B23C"/>
+            <!-- left figure (blue) -->
+            <g stroke="#2E6BA6" stroke-width="2.3" stroke-linecap="round" fill="none">
+              <path d="M19 23 L14.4 18.6 M19 23 L23.6 18.6 M19 23 V28.5 M19 28.5 L15.4 33 M19 28.5 L22.6 33"/>
+            </g>
+            <circle cx="19" cy="18.6" r="3.1" fill="#2E6BA6"/>
+            <!-- right figure (orange) -->
+            <g stroke="#E8743B" stroke-width="2.3" stroke-linecap="round" fill="none">
+              <path d="M33 23 L28.4 18.6 M33 23 L37.6 18.6 M33 23 V28.5 M33 28.5 L29.4 33 M33 28.5 L36.6 33"/>
+            </g>
+            <circle cx="33" cy="18.6" r="3.1" fill="#E8743B"/>
+          </svg>
+        </div>
         <div>
           <div class="name">Above &amp; Beyond ABA</div>
-          <div class="tag">care to soar</div>
+          <div class="tag">ABA Therapy</div>
         </div>
       </div>
       <div class="updated">Data last loaded<br><b id="loadedStamp">—</b></div>
