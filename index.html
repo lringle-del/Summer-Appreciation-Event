@@ -57,13 +57,21 @@
 
   /* Bars */
   .bars{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow)}
-  .bar-row{display:grid;grid-template-columns:150px 1fr 118px;align-items:center;gap:14px;padding:9px 0}
+  .bars-head{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:0 0 12px}
+  .bar-row{display:grid;grid-template-columns:168px 1fr 132px;align-items:center;gap:14px;padding:10px 0}
   .bar-row+.bar-row{border-top:1px solid var(--parchment)}
   .bar-label{font-weight:700;font-size:14.5px}
+  .bar-sub{display:block;font-weight:500;font-size:11.5px;color:var(--muted);margin-top:2px}
   .bar-track{background:var(--parchment);border-radius:9px;height:22px;overflow:hidden}
   .bar-fill{height:100%;border-radius:9px;background:linear-gradient(90deg,var(--sungold),var(--sunset));min-width:3px;transition:width .5s ease}
+  .bar-fill.full{background:linear-gradient(90deg,var(--lagoon),var(--sky))}
   .bar-num{font-size:13.5px;color:var(--muted);text-align:right}
-  .bar-num b{color:var(--ink);font-size:15px}
+  .bar-num b{color:var(--ink);font-size:16px}
+  .bar-num .gap{display:block;font-size:12px;font-weight:700;margin-top:2px}
+  .bar-num .gap.under{color:var(--clay)}
+  .bar-num .gap.over{color:var(--lagoon)}
+  .bar-row.total{border-top:2px solid var(--line);margin-top:2px}
+  .bar-row.total .bar-label{font-family:'Libre Caslon Display',serif;font-weight:400;font-size:16px}
 
   /* Controls */
   .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:14px 0 6px}
@@ -108,7 +116,7 @@
   @media(max-width:820px){
     .tiles{grid-template-columns:repeat(2,1fr)}
     h1.title{font-size:30px}
-    .bar-row{grid-template-columns:96px 1fr 74px}
+    .bar-row{grid-template-columns:112px 1fr 96px}
     thead th.hide-sm,tbody td.hide-sm{display:none}
   }
 </style>
@@ -170,6 +178,13 @@ const LOC_MAP = {
   "utah":["Utah","Utah"], "virginia":["Virginia","Virginia"]
 };
 const JUNK_NAMES = new Set(["sdf","sdfs","sdfsdf","sd","test","asdf","sdfsdfsdf","sdfsd","asd","aaa","xxx"]);
+
+/* Estimated attendees per event location (organiser's pre-event targets) */
+const TARGETS = {
+  "Nebraska":500, "Atlanta, GA":250, "North Charlotte, NC":175,
+  "Oklahoma City, OK":125, "Indiana":100, "Tulsa, OK":75, "Raleigh, NC":75,
+  "Virginia":60, "Colorado":50, "Utah":40
+};
 
 let DATA = INITIAL_DATA.slice();
 
@@ -253,15 +268,29 @@ function render(){
     <div class="tile"><div class="k">Locations</div><div class="v">${nStates}</div><div class="sub">with registrations</div></div>
     <div class="tile"><div class="k">Top location</div><div class="v" style="font-size:28px">${esc(top)}</div><div class="sub">${stateCounts[top]||0} RSVPs</div></div>`;
 
-  // ---- bars ----
-  const barStates=Object.keys(stateCounts).sort((a,b)=>stateCounts[b]-stateCounts[a]);
-  const max=Math.max(1,...barStates.map(s=>stateCounts[s]));
-  document.getElementById("bars").innerHTML=barStates.map(s=>{
-    const c=stateCounts[s], pl=recs.filter(r=>r.location===s&&r.plusOne==="Yes").length;
-    return `<div class="bar-row"><div class="bar-label">${esc(s)}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(c/max*100).toFixed(1)}%"></div></div>
-      <div class="bar-num"><b>${c}</b> RSVPs · +${pl}</div></div>`;
-  }).join("");
+  // ---- bars: expected attendees (RSVPs + plus-ones) vs. estimate ----
+  const plusByLoc={}; recs.forEach(r=>{ if(r.plusOne==="Yes") plusByLoc[r.location]=(plusByLoc[r.location]||0)+1; });
+  const barStates=Object.keys(stateCounts).sort((a,b)=>(TARGETS[b]||0)-(TARGETS[a]||0)||stateCounts[b]-stateCounts[a]);
+  const totalTarget=barStates.reduce((a,s)=>a+(TARGETS[s]||0),0);
+  const totalHead=total+plus;
+  const rowHTML=(s)=>{
+    const c=stateCounts[s]||0, pl=plusByLoc[s]||0, head=c+pl, tgt=TARGETS[s]||0;
+    const pct=tgt?Math.min(100,head/tgt*100):0;
+    const over=tgt&&head>=tgt;
+    return `<div class="bar-row">
+      <div class="bar-label">${esc(s)}<span class="bar-sub">${c} RSVPs · +${pl}</span></div>
+      <div class="bar-track" title="${head} expected of ${tgt||'?'} estimated"><div class="bar-fill${over?' full':''}" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="bar-num"><b>${head}</b> / ${tgt||'—'}${tgt?`<span class="gap ${over?'over':'under'}">${over?`+${head-tgt} over`:`${tgt-head} to go`}</span>`:''}</div>
+    </div>`;
+  };
+  const totalOver=totalHead>=totalTarget;
+  document.getElementById("bars").innerHTML=
+    `<div class="bars-head">Expected attendees (RSVPs + plus-ones) vs. estimate</div>`+
+    barStates.map(rowHTML).join("")+
+    `<div class="bar-row total"><div class="bar-label">All locations<span class="bar-sub">${total} RSVPs · +${plus}</span></div>
+      <div class="bar-track" title="${totalHead} of ${totalTarget}"><div class="bar-fill${totalOver?' full':''}" style="width:${(totalTarget?Math.min(100,totalHead/totalTarget*100):0).toFixed(1)}%"></div></div>
+      <div class="bar-num"><b>${totalHead}</b> / ${totalTarget}<span class="gap ${totalOver?'over':'under'}">${totalOver?`+${totalHead-totalTarget} over`:`${totalTarget-totalHead} to go`}</span></div>
+    </div>`;
 
   // ---- state cards ----
   const host=document.getElementById("states");
