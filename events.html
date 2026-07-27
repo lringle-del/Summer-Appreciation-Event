@@ -105,8 +105,26 @@
   .dot.pl{background:var(--lagoon)}.dot.att{background:var(--sunset)}
   .em-h .name{font-weight:800;font-size:13.5px}
   .em-h .to{font-size:12px;color:var(--muted)}
-  .em-h .st{margin-left:auto;font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px}
-  .st.sched{background:var(--parchment);color:#7a5a2a}.st.due{background:var(--clay);color:#fff}.st.past{background:#dfe4ea;color:var(--muted)}.st.sent{background:#d8f0e4;color:var(--green)}
+  .st,.tg{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .em-h .st{margin-left:auto}
+  .c-needs{background:#fdeccd;color:#9a6b12}
+  .c-appr{background:#e4edfb;color:var(--lagoon)}
+  .c-due{background:var(--clay);color:#fff}
+  .c-sent{background:#d8f0e4;color:var(--green)}
+  .c-skip{background:#e6e9ee;color:var(--muted)}
+
+  /* action center */
+  .ac{background:var(--white);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px 18px;margin:18px 0 4px}
+  .ac.alert{border-left:4px solid var(--clay)} .ac.warn{border-left:4px solid var(--sunset)} .ac.ready{border-left:4px solid var(--lagoon)} .ac.ok{border-left:4px solid var(--green)}
+  .ac .hl{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .ac .hs{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .ac-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--parchment);font-size:13.5px;margin-top:6px}
+  .ac-row:first-of-type{margin-top:10px}
+  .ac-row .who b{font-weight:700}
+  .ac-row .who .sub{display:block;color:var(--muted);font-size:12px}
+  .ac-open{font-family:inherit;font-weight:700;font-size:12.5px;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:var(--white);color:var(--ink);cursor:pointer;box-shadow:var(--shadow)}
+  .ac-open:hover{background:var(--parchment)}
+  .ac-more{font-size:12.5px;color:var(--muted);margin-top:8px}
   .em-body{padding:12px 15px}
   .em-body input.subj{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fffdf8}
   .em-body textarea{width:100%;font-family:inherit;font-size:13px;line-height:1.5;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;min-height:150px;resize:vertical;color:var(--ink)}
@@ -153,6 +171,8 @@
     <div>✉️</div>
     <div><b>Sending is not connected yet.</b> The emails below are fully written and ready. To make “Schedule &amp; Send” actually deliver — including the daily auto-send on each due date — connect <b>Resend</b> (create the account, verify the abtaba.com domain, add the API key). Until then, each button lets you preview, copy, or open the email in your mail app.</div>
   </div>
+
+  <div class="ac" id="actionCenter"></div>
 
   <div class="vtoggle">
     <button id="vCal" class="active" onclick="setView('cal')">📅 Calendar</button>
@@ -238,14 +258,17 @@ function reminders(e){
     {kind:"att", key:"att2", off:-2, name:"Attendee reminder #2", toLabel:()=>e.rsvps+" attendees"},
   ].map(r=>({...r, date:addDays(d,r.off)}));
 }
-function remStatus(rd,sent){
-  if(sent) return {cls:"sent",txt:"Sent ✓"};
-  const d=dbetween(rd,T0);
-  if(d<0) return {cls:"past",txt:"Passed"};
-  if(d===0) return {cls:"due",txt:"Due today"};
-  return {cls:"sched",txt:"in "+d+"d"};
-}
 function getPL(id){return store.get("pl:"+id,{name:"",email:""});}
+/* per-email workflow status: draft -> approved -> sent (or skipped) */
+function getStatus(id,key){return store.get("status:"+id+":"+key,"draft");}
+function setStatus(id,key,v){store.set("status:"+id+":"+key,v);}
+function statusPill(status,rd){
+  if(status==="sent") return {cls:"c-sent",txt:"Sent ✓"};
+  if(status==="skipped") return {cls:"c-skip",txt:"Skipped"};
+  const due=dbetween(rd,T0)<=0;
+  if(status==="draft") return {cls:"c-needs",txt:due?"Needs approval · overdue":"Needs approval"};
+  return due ? {cls:"c-due",txt:"Approved · due now"} : {cls:"c-appr",txt:"Approved · "+fmtShort(rd)};
+}
 
 /* ===== email templates ===== */
 function tasksFor(id){return DEFAULT_TASKS;}
@@ -342,8 +365,30 @@ function openModal(id){
   const pl=getPL(id);const conf=store.get("conf:"+id,false);
   const maps=e.address?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.venue+" "+e.address)}`:"";
   const emails=reminders(e).map(r=>{
-    const m=getEmail(e,r);const sent=store.get("sent:"+id+":"+r.key,false);const st=remStatus(r.date,sent);
+    const m=getEmail(e,r);const status=getStatus(id,r.key);const st=statusPill(status,r.date);
+    const due=dbetween(r.date,T0)<=0;
     const toDetail = r.kind==="pl" ? (pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>') : (e.rsvps+" attendees at "+esc(e.label));
+    const mailBtn = r.kind==="pl"&&pl.email?`<button class="btn ghost" onclick="openMailApp('${r.key}')">Open in mail app</button>`:"";
+    let controls;
+    if(status==="draft"){
+      controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve</button>
+        <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
+        <button class="lnk" onclick="resetMail('${r.key}')">Reset</button>
+        <button class="lnk" onclick="skip('${r.key}')">Skip</button>
+        <span class="foot-note">Needs approval before it can send</span>`;
+    }else if(status==="approved"){
+      controls=`${due?`<button class="btn primary" onclick="send('${r.key}','${r.kind}')">⚡ Send now</button>`:``}
+        <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
+        <button class="lnk" onclick="revoke('${r.key}')">Revoke approval</button>
+        <span class="foot-note">${due?"Approved &amp; due — send now (or auto-sends once Resend is on)":"✓ Approved — auto-sends "+fmtShort(r.date)+" once Resend is on"}</span>`;
+    }else if(status==="sent"){
+      controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
+        <button class="lnk" onclick="markUnsent('${r.key}')">Mark unsent</button>
+        <span class="foot-note">✓ Sent</span>`;
+    }else{ /* skipped */
+      controls=`<button class="lnk" onclick="restore('${r.key}')">Restore</button>
+        <span class="foot-note">Skipped — this reminder won't send</span>`;
+    }
     return `<div class="em">
       <div class="em-h">
         <span class="dot ${r.kind}"></span>
@@ -354,13 +399,7 @@ function openModal(id){
       <div class="em-body">
         <input class="subj" id="subj:${r.key}" value="${esc(m.subject)}" oninput="editMail('${r.key}')">
         <textarea id="body:${r.key}" oninput="editMail('${r.key}')">${esc(m.body)}</textarea>
-        <div class="em-foot">
-          <button class="btn primary" onclick="send('${r.key}','${r.kind}')">⚡ Schedule &amp; Send</button>
-          <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
-          ${r.kind==="pl"&&pl.email?`<button class="btn ghost" onclick="openMailApp('${r.key}')">Open in mail app</button>`:""}
-          <button class="lnk" onclick="resetMail('${r.key}')">Reset to template</button>
-          <span class="foot-note">${sent?"Marked sent":st.cls==="due"?"Due to send today":st.cls==="past"?"Send date has passed":"Auto-sends on the date above once Resend is on"}</span>
-        </div>
+        <div class="em-foot">${controls}</div>
       </div>
     </div>`;
   }).join("");
@@ -430,12 +469,71 @@ async function send(key,kind){
     const res=await fetch("/api/send",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({eventId:e.id,key,kind,subject:s,body:b,scheduledFor:r.date.toISOString(),label:e.label,plEmail:pl.email})});
     if(res.ok){
-      store.set("sent:"+openId+":"+key,true);openModal(openId);
+      setStatus(openId,key,"sent");openModal(openId);renderActionCenter();
       toast("✓ Scheduled/sent via Resend.");
     }else{
       showSetup();
     }
   }catch(err){ showSetup(); }
+}
+/* ===== approval workflow ===== */
+function approve(key){
+  const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
+  if(r.kind==="pl" && !getPL(openId).email){ toast("Add the PL's email above before approving."); return; }
+  setStatus(openId,key,"approved");openModal(openId);renderActionCenter();
+  const due=dbetween(r.date,T0)<=0;
+  toast(due?"Approved. It's due now — click Send now, or it auto-sends once Resend is on.":"Approved — will auto-send "+fmtShort(r.date)+" once Resend is connected.");
+}
+function revoke(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
+function skip(key){setStatus(openId,key,"skipped");openModal(openId);renderActionCenter();}
+function restore(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
+function markUnsent(key){setStatus(openId,key,"approved");openModal(openId);renderActionCenter();}
+
+/* ===== action center: what needs attention now ===== */
+function renderActionCenter(){
+  const send=[], approve=[], ready=[];
+  EVENTS.forEach(e=>reminders(e).forEach(r=>{
+    const status=getStatus(e.id,r.key);
+    if(status==="sent"||status==="skipped") return;
+    const d=dbetween(r.date,T0);
+    if(d<=0){ send.push({e,r,status}); }
+    else if(d<=7){ (status==="approved"?ready:approve).push({e,r,status}); }
+  }));
+  const byDate=(a,b)=>a.r.date-b.r.date;
+  send.sort(byDate);approve.sort(byDate);ready.sort(byDate);
+  const el=document.getElementById("actionCenter");
+  const row=(x,verb)=>{
+    const st=statusPill(x.status,x.r.date);
+    const d=dbetween(x.r.date,T0);
+    const timing = d<0?`was due ${fmtShort(x.r.date)} (${-d}d ago)`:d===0?`due today`:`${verb} ${fmtShort(x.r.date)}`;
+    const to = x.r.kind==="pl"?"PL":`${x.e.rsvps} attendees`;
+    return `<div class="ac-row">
+      <div class="who"><b>${esc(x.e.city||x.e.state)}</b> · ${x.r.name}<span class="sub">→ ${to} · ${timing}</span></div>
+      <span class="tg ${st.cls}">${st.txt}</span>
+      <button class="ac-open" onclick="openModal('${x.e.id}')">Open</button>
+    </div>`;
+  };
+  let cls,hl,hs,rows="";
+  if(send.length){
+    cls="alert"; hl=`📨 ${send.length} reminder${send.length>1?"s":""} need to go out now`;
+    hs="These are due or overdue and not sent yet. Open each to approve &amp; send (or skip if it's too late).";
+    rows=send.map(x=>row(x,"sends")).join("");
+    if(approve.length) rows+=`<div class="ac-more">Plus ${approve.length} more coming up in the next 7 days that need approval.</div>`;
+  }else if(approve.length){
+    cls="warn"; hl=`🕑 ${approve.length} reminder${approve.length>1?"s":""} coming up need your approval`;
+    hs="Approve these so they're ready to send on their due date.";
+    rows=approve.map(x=>row(x,"sends")).join("");
+    if(ready.length) rows+=`<div class="ac-more">${ready.length} other upcoming reminder(s) already approved and scheduled.</div>`;
+  }else if(ready.length){
+    cls="ready"; hl=`✅ ${ready.length} reminder${ready.length>1?"s":""} approved &amp; scheduled`;
+    hs="Nothing to do right now — these will auto-send on their due dates once Resend is connected.";
+    rows=ready.map(x=>row(x,"sends")).join("");
+  }else{
+    cls="ok"; hl="✅ You're all caught up";
+    hs="No reminders are due or awaiting approval in the next 7 days.";
+  }
+  el.className="ac "+cls;
+  el.innerHTML=`<div class="hl">${hl}</div><div class="hs">${hs}</div>${rows}`;
 }
 function showSetup(){
   toast("Sending isn't connected yet. Connect Resend (account → verify abtaba.com → API key) and this button goes live. Meanwhile use Copy or Open in mail app.");
@@ -445,6 +543,7 @@ function toast(msg){const t=document.getElementById("toast");t.innerHTML=msg;t.c
 
 /* init */
 renderCal();
+renderActionCenter();
 if(store.get("view","cal")==="list")setView("list");
 </script>
 </body>
