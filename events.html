@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Event Command Center · Above &amp; Beyond ABA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --vanilla:#f5f0e5; --biscuit:#e8dbc4; --parchment:#ebd1ab;
+    --sungold:#ffb254; --sunset:#ff8f30; --clay:#de5730;
+    --sky:#8abaff; --lagoon:#457acc; --midnight:#1c458c;
+    --ink:#1c458c; --muted:#5f6b7a; --line:#e3d6bd; --white:#ffffff;
+    --green:#2f9e6f; --amber:#c98a1a;
+    --shadow:0 1px 2px rgba(28,69,140,.08),0 8px 24px rgba(28,69,140,.07);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--vanilla);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+  h1,h2,h3,.display{font-family:'Libre Caslon Display',Georgia,serif;font-weight:400;letter-spacing:.2px}
+  a{color:var(--lagoon)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+
+  header.brand{background:var(--vanilla);color:var(--ink);padding:20px 0 22px;border-bottom:1px solid var(--line)}
+  .brand-row{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .logo .name{font-family:'Fredoka','Inter',sans-serif;font-weight:600;font-size:24px;color:#141414;letter-spacing:-.01em}
+  .logo .tag{font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:#141414;font-weight:600;margin-top:2px}
+  .nav a{font-size:13.5px;font-weight:700;text-decoration:none;color:var(--muted);padding:8px 12px;border-radius:9px}
+  .nav a.active{background:var(--white);color:var(--ink);box-shadow:var(--shadow)}
+  h1.title{font-size:38px;margin:20px 0 4px;color:var(--midnight)}
+  .subtitle{color:var(--muted);font-size:15px;max-width:680px}
+
+  .banner{display:flex;gap:12px;align-items:flex-start;background:#fff7ec;border:1px solid var(--parchment);border-left:4px solid var(--sunset);border-radius:12px;padding:13px 16px;margin:20px 0 6px;font-size:13.5px;color:#7a5a2a}
+  .banner b{color:var(--clay)}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:22px 0 6px}
+  .tile{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+  .tile .v{font-family:'Libre Caslon Display',serif;font-size:32px;line-height:1.05;margin-top:6px}
+  .tile .sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .tile.accent{background:linear-gradient(135deg,var(--sunset),var(--clay));color:var(--vanilla);border:none}
+  .tile.accent .k{color:#ffe9d8}.tile.accent .sub{color:#ffe1cd}
+
+  .sec-h{font-size:24px;margin:30px 0 6px}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);margin:16px 0;overflow:hidden}
+  .card.past{opacity:.62}
+  .card-top{display:grid;grid-template-columns:118px 1fr;gap:18px;padding:18px 22px}
+  .datebox{text-align:center;border-right:1px solid var(--parchment);padding-right:16px}
+  .datebox .mo{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--clay)}
+  .datebox .day{font-family:'Libre Caslon Display',serif;font-size:44px;line-height:1}
+  .datebox .wd{font-size:12px;color:var(--muted);font-weight:600}
+  .cd{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:999px}
+  .cd.future{background:var(--parchment);color:#7a5a2a}
+  .cd.soon{background:var(--sunset);color:#fff}
+  .cd.today{background:var(--clay);color:#fff}
+  .cd.past{background:#dfe4ea;color:var(--muted)}
+
+  .ev-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .ev-title{font-family:'Libre Caslon Display',serif;font-size:24px}
+  .ev-state{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--lagoon)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 18px;margin-top:12px}
+  .f .l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  .f .val{font-size:14px;font-weight:600;margin-top:1px}
+  .f .val.tbd{color:var(--amber)}
+  .miss{color:var(--amber);font-weight:700}
+
+  .pl{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;padding:14px 22px;background:var(--vanilla);border-top:1px solid var(--parchment)}
+  .pl label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .pl input[type=text],.pl input[type=email]{width:100%;font-family:inherit;font-size:13.5px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--white);color:var(--ink)}
+  .plchk{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+  .plchk input{width:17px;height:17px;accent-color:var(--green)}
+  .plchk.on{color:var(--green)}
+
+  .rem{padding:6px 22px 16px}
+  .rem-h{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:12px 0 8px}
+  .rrow{display:grid;grid-template-columns:20px 1fr 150px 120px;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--parchment);font-size:13.5px}
+  .rrow .dot{width:10px;height:10px;border-radius:50%;justify-self:center}
+  .rrow .what b{font-weight:700}
+  .rrow .what .sub{display:block;font-size:12px;color:var(--muted)}
+  .rrow .when{color:var(--muted);font-size:13px}
+  .st{font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:999px;text-align:center;justify-self:start}
+  .st.sched{background:var(--parchment);color:#7a5a2a}
+  .st.due{background:var(--clay);color:#fff}
+  .st.past{background:#dfe4ea;color:var(--muted)}
+  .dot.pl{background:var(--lagoon)}.dot.att{background:var(--sunset)}
+
+  .btn{font-family:inherit;font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;border:none;cursor:pointer;box-shadow:var(--shadow);text-decoration:none;display:inline-flex;align-items:center;gap:7px}
+  .btn.ghost{background:var(--white);color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--parchment)}
+  .tasks{margin:2px 22px 16px;border:1px dashed var(--line);border-radius:12px;overflow:hidden}
+  .tasks summary{cursor:pointer;padding:11px 16px;font-size:13px;font-weight:700;color:var(--ink);list-style:none}
+  .tasks summary::-webkit-details-marker{display:none}
+  .tasks summary:before{content:"▸ ";color:var(--lagoon)}
+  .tasks[open] summary:before{content:"▾ "}
+  .tasks ul{list-style:none;margin:0;padding:4px 18px 14px}
+  .tasks li{display:flex;gap:9px;align-items:flex-start;padding:5px 0;font-size:13.5px}
+  .tasks li input{width:16px;height:16px;margin-top:2px;accent-color:var(--green)}
+  .tasks li.done label{text-decoration:line-through;color:var(--muted)}
+
+  footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 46px;line-height:1.7}
+  @media(max-width:820px){
+    .tiles{grid-template-columns:repeat(2,1fr)}
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .pl{grid-template-columns:1fr}
+    .rrow{grid-template-columns:16px 1fr;gap:6px}
+    .rrow .when,.rrow .st{grid-column:2}
+    .card-top{grid-template-columns:92px 1fr}
+  }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="wrap">
+    <div class="brand-row">
+      <div class="logo"><div class="name">Above &amp; Beyond ABA</div><div class="tag">Summer Appreciation Events</div></div>
+      <nav class="nav">
+        <a href="./index.html">RSVPs</a>
+        <a href="./events.html" class="active">Event Command Center</a>
+      </nav>
+    </div>
+    <h1 class="title">Event Command Center</h1>
+    <div class="subtitle">Every event's date, logistics, PL owner, and the reminder schedule. Attendee reminders go out <b>3 &amp; 2 days</b> before; the PL task reminder goes out <b>1 week</b> before.</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="banner">
+    <div>✉️</div>
+    <div><b>Email sending is not connected yet.</b> This dashboard schedules and tracks the reminders and lets you email a PL directly. Automatic sending to attendees turns on once <b>Resend</b> is wired up (a daily job will send each reminder on its due date). Until then, the timeline below shows exactly what <i>would</i> send and when.</div>
+  </div>
+
+  <section class="tiles" id="tiles"></section>
+
+  <h2 class="sec-h">Events</h2>
+  <div id="events"></div>
+
+  <footer>
+    Countdowns are relative to today in your local time. PL assignments &amp; checkboxes are saved in this browser until Resend + a shared datastore are connected.<br>
+    Above &amp; Beyond ABA · Summer Appreciation Events
+  </footer>
+</div>
+
+<script>
+/* =================================================================
+   CANONICAL EVENT DATA
+   When Resend is connected, this array moves to /events.json and is
+   read by both this page and the daily send-reminders cron function.
+   `label` matches the RSVP dashboard's location label so the cron can
+   join each event to its attendee email list. `rsvps` is a snapshot
+   of real (non-test) RSVPs as of the date noted.
+   ================================================================= */
+const RSVP_SNAPSHOT_DATE = "Jul 27, 2026";
+const EVENTS = [
+  {id:"co", state:"Colorado", city:"Centennial", label:"Colorado",
+   venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"",
+   date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null,
+   notes:""},
+  {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK",
+   venue:"Chicken N Pickle", address:"", url:"",
+   date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
+  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC",
+   venue:"The Zinc House", address:"", url:"https://www.zinchouse.com/",
+   date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, notes:""},
+  {id:"tulsa", state:"Oklahoma", city:"Tulsa", label:"Tulsa, OK",
+   venue:"Courts & Commons", address:"7921 E 119th Dr, Bixby, OK 74008", url:"",
+   date:"2026-08-06", time:"7:00–9:00 PM", est:75, rsvps:34, budget:null, perPerson:null, notes:""},
+  {id:"omaha", state:"Nebraska", city:"Omaha", label:"Nebraska",
+   venue:"Backlot Pizza & Kitchen (Elkhorn)", address:"6200 South 205th Plaza, Omaha, NE 68022",
+   url:"https://www.backlotpizzaandkitchen.com/location/backlot-pizza-elkhorn/",
+   date:"2026-08-10", time:"TBD", est:500, rsvps:197, budget:20000, perPerson:40,
+   notes:"Movie afterward at ACX Cinemas."},
+  {id:"atlanta", state:"Georgia", city:"Atlanta (Sandy Springs)", label:"Atlanta, GA",
+   venue:"Hudson Grille", address:"6317 Roswell Rd, Sandy Springs, GA 30328", url:"https://hudsongrille.com/",
+   date:"2026-08-10", time:"5:30–9:00 PM", est:250, rsvps:117, budget:10000, perPerson:40,
+   notes:"Venue phone: (404) 554-8282"},
+  {id:"slc", state:"Utah", city:"Salt Lake City", label:"Utah",
+   venue:"Red Iguana 2", address:"866 W South Temple, Salt Lake City, UT 84116", url:"",
+   date:"2026-08-18", time:"6:30–8:30 PM", est:40, rsvps:12, budget:1200, perPerson:30,
+   notes:"Date moved from the 19th to the 18th."},
+  {id:"ncharlotte", state:"North Carolina", city:"North Charlotte", label:"North Charlotte, NC",
+   venue:"VBGB Beer Hall & Gardens", address:"", url:"https://vbgbuptown.com/",
+   date:"2026-08-19", time:"6:30–9:30 PM", est:175, rsvps:90, budget:14000, perPerson:80, notes:""},
+  {id:"va", state:"Virginia", city:"", label:"Virginia",
+   venue:"Topgolf Loudoun", address:"", url:"",
+   date:"2026-08-20", time:"5:00–7:00 PM", est:60, rsvps:9, budget:1947, perPerson:null, notes:""},
+  {id:"indiana", state:"Indiana", city:"TBD", label:"Indiana",
+   venue:"Pins Bar", address:"", url:"https://www.pinsbar.com/",
+   date:"2026-09-09", time:"6:30 PM", est:100, rsvps:19, budget:3000, perPerson:null, notes:""},
+];
+
+const DEFAULT_TASKS = [
+  "Confirm final headcount with the venue",
+  "Confirm menu & dietary restrictions",
+  "Confirm budget and payment method",
+  "Arrange décor / signage / name tags",
+  "Confirm activities, A/V, or movie tickets (if applicable)",
+  "Share parking & arrival details with attendees",
+  "Assign a day-of on-site point of contact",
+];
+
+/* ---- persistence (per-browser until a shared backend exists) ---- */
+const store = {
+  get(k,d){ try{const v=localStorage.getItem("evt:"+k);return v==null?d:JSON.parse(v);}catch{ return d; } },
+  set(k,v){ try{localStorage.setItem("evt:"+k,JSON.stringify(v));}catch{} }
+};
+
+/* ---- date helpers (date-only, local) ---- */
+function ymd(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function today0(){ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); }
+function addDays(dt,n){ const x=new Date(dt); x.setDate(x.getDate()+n); return x; }
+function daysBetween(a,b){ return Math.round((a-b)/86400000); }
+const MO=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function fmt(dt){ return WD[dt.getDay()]+" "+MO[dt.getMonth()].charAt(0)+MO[dt.getMonth()].slice(1).toLowerCase()+" "+dt.getDate(); }
+function money(n){ return n==null?null:"$"+n.toLocaleString("en-US"); }
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+const T0 = today0();
+
+function reminderStatus(remDate){
+  const d = daysBetween(remDate, T0);
+  if(d < 0)  return {cls:"past",  txt:"Passed"};
+  if(d === 0) return {cls:"due",   txt:"Due today"};
+  return {cls:"sched", txt:"in "+d+" day"+(d===1?"":"s")};
+}
+function countdownChip(evDate){
+  const d = daysBetween(evDate, T0);
+  if(d < 0)  return {cls:"past",  txt:"Past"};
+  if(d === 0) return {cls:"today", txt:"TODAY"};
+  if(d === 1) return {cls:"today", txt:"Tomorrow"};
+  if(d <= 7)  return {cls:"soon",  txt:"in "+d+" days"};
+  return {cls:"future", txt:"in "+d+" days"};
+}
+
+/* ---- render ---- */
+function render(){
+  const evs = EVENTS.map(e=>({...e, _d:ymd(e.date)})).sort((a,b)=>a._d-b._d);
+
+  // tiles
+  const upcoming = evs.filter(e=>daysBetween(e._d,T0)>=0);
+  const next = upcoming[0];
+  let emailsDue7=0;
+  evs.forEach(e=>{
+    [[-7],[-3],[-2]].forEach(([off])=>{
+      const rd=addDays(e._d,off); const dd=daysBetween(rd,T0);
+      if(dd>=0 && dd<=7) emailsDue7++;
+    });
+  });
+  const unassigned = evs.filter(e=>!(store.get("pl:"+e.id,{}).email)).length;
+  document.getElementById("tiles").innerHTML = `
+    <div class="tile"><div class="k">Events</div><div class="v">${evs.length}</div><div class="sub">across ${new Set(evs.map(e=>e.state)).size} states</div></div>
+    <div class="tile accent"><div class="k">Next event</div><div class="v" style="font-size:22px">${next?esc(next.city||next.state):"—"}</div><div class="sub">${next?fmt(next._d)+" · "+countdownChip(next._d).txt:"all past"}</div></div>
+    <div class="tile"><div class="k">Reminders due ≤7 days</div><div class="v">${emailsDue7}</div><div class="sub">PL + attendee sends</div></div>
+    <div class="tile"><div class="k">PLs unassigned</div><div class="v">${unassigned}</div><div class="sub">need a name + email</div></div>`;
+
+  // cards
+  document.getElementById("events").innerHTML = evs.map(e=>{
+    const cd=countdownChip(e._d);
+    const past=daysBetween(e._d,T0)<0;
+    const pl=store.get("pl:"+e.id,{name:"",email:""});
+    const confirmed=store.get("conf:"+e.id,false);
+    const maps = e.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.venue+" "+e.address)}` : "";
+    const venueLine = e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.venue)}</a>` : esc(e.venue);
+
+    const rem = [
+      {off:-7, kind:"pl",  what:"PL task reminder", to:pl.email?esc(pl.name||pl.email):"PL (unassigned)"},
+      {off:-3, kind:"att", what:"Attendee reminder #1", to:e.rsvps+" attendees"},
+      {off:-2, kind:"att", what:"Attendee reminder #2", to:e.rsvps+" attendees"},
+    ].map(r=>{
+      const rd=addDays(e._d,r.off); const st=reminderStatus(rd);
+      return `<div class="rrow">
+        <span class="dot ${r.kind}"></span>
+        <span class="what"><b>${r.what}</b><span class="sub">→ ${r.to}</span></span>
+        <span class="when">${fmt(rd)} <span style="opacity:.6">(${Math.abs(r.off)}d before)</span></span>
+        <span class="st ${st.cls}">${st.txt}</span>
+      </div>`;
+    }).join("");
+
+    const tasksState=store.get("tasks:"+e.id,{});
+    const taskItems=DEFAULT_TASKS.map((t,i)=>{
+      const done=!!tasksState[i];
+      return `<li class="${done?'done':''}"><input type="checkbox" data-task="${e.id}:${i}" ${done?'checked':''}><label>${esc(t)}</label></li>`;
+    }).join("");
+
+    const plMail = pl.email
+      ? `mailto:${encodeURIComponent(pl.email)}?subject=${encodeURIComponent("Tasks for the "+(e.city||e.state)+" event ("+fmt(e._d)+")")}&body=${encodeURIComponent("Hi "+(pl.name||"")+",\n\nQuick reminder that the "+(e.city||e.state)+" event is coming up on "+fmt(e._d)+" at "+e.venue+" ("+e.time+").\n\nPlease make sure these are handled:\n- "+DEFAULT_TASKS.join("\n- ")+"\n\nThanks!")}`
+      : "";
+
+    return `<div class="card ${past?'past':''}">
+      <div class="card-top">
+        <div class="datebox">
+          <div class="mo">${MO[e._d.getMonth()]}</div>
+          <div class="day">${e._d.getDate()}</div>
+          <div class="wd">${WD[e._d.getDay()]}</div>
+          <div class="cd ${cd.cls}">${cd.txt}</div>
+        </div>
+        <div>
+          <div class="ev-head"><span class="ev-title">${esc(e.city||e.state)}</span><span class="ev-state">${esc(e.state)}</span></div>
+          <div class="grid">
+            <div class="f"><div class="l">Time</div><div class="val ${e.time==='TBD'?'tbd':''}">${esc(e.time)}</div></div>
+            <div class="f"><div class="l">Venue</div><div class="val">${venueLine}${maps?` · <a href="${maps}" target="_blank" rel="noopener">map</a>`:''}</div></div>
+            <div class="f"><div class="l">Est. / RSVP'd</div><div class="val">${e.est} est · <b>${e.rsvps}</b> RSVP'd</div></div>
+            <div class="f"><div class="l">Budget</div><div class="val ${e.budget==null?'tbd':''}">${money(e.budget)||'<span class="miss">need</span>'}${e.perPerson?` · ${money(e.perPerson)}/pp`:(e.budget!=null?' · <span class="miss">/pp?</span>':'')}</div></div>
+          </div>
+          ${e.address?`<div style="font-size:12.5px;color:var(--muted);margin-top:8px">📍 ${esc(e.address)}</div>`:''}
+          ${e.notes?`<div style="font-size:12.5px;color:var(--muted);margin-top:5px">📝 ${esc(e.notes)}</div>`:''}
+        </div>
+      </div>
+
+      <div class="pl">
+        <div><label>Party Lead (PL)</label><input type="text" data-pl-name="${e.id}" value="${esc(pl.name)}" placeholder="Name"></div>
+        <div><label>PL email</label><input type="email" data-pl-email="${e.id}" value="${esc(pl.email)}" placeholder="name@abtaba.com"></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <label class="plchk ${confirmed?'on':''}"><input type="checkbox" data-conf="${e.id}" ${confirmed?'checked':''}>${confirmed?'On it ✓':'Confirm PL is on it'}</label>
+          ${plMail?`<a class="btn ghost" href="${plMail}">✉️ Email PL</a>`:''}
+        </div>
+      </div>
+
+      <div class="rem">
+        <div class="rem-h">Reminder schedule</div>
+        ${rem}
+      </div>
+
+      <details class="tasks">
+        <summary>PL task checklist (${DEFAULT_TASKS.length})</summary>
+        <ul>${taskItems}</ul>
+      </details>
+    </div>`;
+  }).join("");
+
+  wire();
+}
+
+function wire(){
+  document.querySelectorAll("[data-pl-name]").forEach(el=>el.addEventListener("input",e=>{
+    const id=e.target.getAttribute("data-pl-name"); const pl=store.get("pl:"+id,{name:"",email:""}); pl.name=e.target.value; store.set("pl:"+id,pl);
+  }));
+  document.querySelectorAll("[data-pl-email]").forEach(el=>el.addEventListener("change",e=>{
+    const id=e.target.getAttribute("data-pl-email"); const pl=store.get("pl:"+id,{name:"",email:""}); pl.email=e.target.value.trim(); store.set("pl:"+id,pl); render();
+  }));
+  document.querySelectorAll("[data-conf]").forEach(el=>el.addEventListener("change",e=>{
+    store.set("conf:"+e.target.getAttribute("data-conf"), e.target.checked); render();
+  }));
+  document.querySelectorAll("[data-task]").forEach(el=>el.addEventListener("change",e=>{
+    const [id,i]=e.target.getAttribute("data-task").split(":"); const t=store.get("tasks:"+id,{}); t[i]=e.target.checked; store.set("tasks:"+id,t);
+    e.target.closest("li").classList.toggle("done",e.target.checked);
+  }));
+}
+
+render();
+</script>
+</body>
+</html>
