@@ -139,6 +139,9 @@
   .td-row .who .sub{display:block;color:var(--muted);font-size:11.5px}
   .td-row .who .sub .od{color:var(--clay);font-weight:700}
   .td-empty{font-size:13px;color:var(--muted);padding:12px 0 4px}
+  .td-acts{display:flex;gap:6px;align-items:center}
+  .td-ignore{font-family:inherit;font-weight:700;font-size:12px;padding:7px 11px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+  .td-ignore:hover{background:#eef1f5;color:var(--ink)}
   @media(max-width:820px){ .todo{grid-template-columns:1fr} }
   .em-body{padding:12px 15px}
   .em-body input.subj{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fffdf8}
@@ -279,7 +282,7 @@ function getStatus(id,key){return store.get("status:"+id+":"+key,"draft");}
 function setStatus(id,key,v){store.set("status:"+id+":"+key,v);}
 function statusPill(status,rd){
   if(status==="sent") return {cls:"c-sent",txt:"Sent ✓"};
-  if(status==="skipped") return {cls:"c-skip",txt:"Skipped"};
+  if(status==="skipped") return {cls:"c-skip",txt:"Ignored"};
   const due=dbetween(rd,T0)<=0;
   if(status==="draft") return {cls:"c-needs",txt:due?"Needs approval · overdue":"Needs approval"};
   return due ? {cls:"c-due",txt:"Approved · due now"} : {cls:"c-appr",txt:"Approved · "+fmtShort(rd)};
@@ -389,7 +392,7 @@ function openModal(id){
       controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve</button>
         <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
         <button class="lnk" onclick="resetMail('${r.key}')">Reset</button>
-        <button class="lnk" onclick="skip('${r.key}')">Skip</button>
+        <button class="lnk" onclick="skip('${r.key}')">Ignore</button>
         <span class="foot-note">Needs approval before it can send</span>`;
     }else if(status==="approved"){
       controls=`${due?`<button class="btn primary" onclick="send('${r.key}','${r.kind}')">⚡ Send now</button>`:``}
@@ -402,7 +405,7 @@ function openModal(id){
         <span class="foot-note">✓ Sent</span>`;
     }else{ /* skipped */
       controls=`<button class="lnk" onclick="restore('${r.key}')">Restore</button>
-        <span class="foot-note">Skipped — this reminder won't send</span>`;
+        <span class="foot-note">Ignored — this reminder won't send</span>`;
     }
     return `<div class="em">
       <div class="em-h">
@@ -502,6 +505,15 @@ function approve(key){
 function revoke(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
 function skip(key){setStatus(openId,key,"skipped");openModal(openId);renderActionCenter();}
 function restore(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
+/* ignore straight from a to-do row (no need to open the event) */
+function ignoreItem(id,key){
+  setStatus(id,key,"skipped");
+  renderActionCenter();
+  if(openId===id) openModal(id);
+  const e=EVENTS.find(x=>x.id===id);const r=reminders(e).find(x=>x.key===key);
+  toast(`Ignored — ${esc(e.city||e.state)} ${r.name} won't send. <a href="#" onclick="restoreItem('${id}','${key}');return false;">Undo</a>`);
+}
+function restoreItem(id,key){setStatus(id,key,"draft");renderActionCenter();if(openId===id)openModal(id);document.getElementById("toast").classList.remove("show");}
 function markUnsent(key){setStatus(openId,key,"approved");openModal(openId);renderActionCenter();}
 
 /* ===== To-Do: what sends today, and what's coming this week ===== */
@@ -521,7 +533,10 @@ function todoRow(x){
   return `<div class="td-row">
     <div class="who"><b>${esc(x.e.city||x.e.state)}</b> · ${x.r.name}<span class="sub">→ ${to} · ${timing}</span></div>
     <span class="tg ${tag.c}">${tag.t}</span>
-    <button class="ac-open" onclick="openModal('${x.e.id}')">Open</button>
+    <div class="td-acts">
+      <button class="ac-open" onclick="openModal('${x.e.id}')">Open</button>
+      <button class="td-ignore" onclick="ignoreItem('${x.e.id}','${x.r.key}')" title="Dismiss — this reminder won't send">Ignore</button>
+    </div>
   </div>`;
 }
 function renderActionCenter(){
