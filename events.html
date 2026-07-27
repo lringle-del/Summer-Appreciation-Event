@@ -50,21 +50,23 @@
   .dow{display:grid;grid-template-columns:repeat(7,1fr);background:var(--midnight)}
   .dow div{color:var(--vanilla);font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:9px 0}
   .weeks{display:grid;grid-template-columns:repeat(7,1fr)}
-  .cell{min-height:104px;border-right:1px solid var(--parchment);border-bottom:1px solid var(--parchment);padding:6px 6px 8px;position:relative}
+  .cell{min-height:118px;border-right:1px solid var(--parchment);border-bottom:1px solid var(--parchment);padding:5px 5px 7px;position:relative;vertical-align:top}
   .cell:nth-child(7n){border-right:none}
-  .cell.out{background:#faf6ee;color:#c9beab}
+  .cell.out{background:#faf6ee}
+  .cell.out .dnum{color:#c9beab}
   .cell.today{background:#fff7ec}
-  .cell .dnum{font-size:12.5px;font-weight:700;color:var(--muted)}
+  .cell .dnum{font-size:12.5px;font-weight:700;color:var(--muted);padding:0 2px}
   .cell.today .dnum{color:var(--clay)}
-  .chip{display:block;margin-top:4px;background:linear-gradient(135deg,var(--sungold),var(--sunset));color:#fff;font-size:11.5px;font-weight:700;padding:4px 7px;border-radius:7px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:none;width:100%;text-align:left}
-  .chip:hover{filter:brightness(1.05)}
-  .chip.past{background:#c3ccd6}
-  .rmk{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
-  .rmk span{font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px}
-  .rmk .pl{background:#e4edfb;color:var(--lagoon)}
-  .rmk .att{background:#ffe6d2;color:var(--clay)}
+  .ev-chip{display:block;width:100%;text-align:left;margin-top:4px;background:linear-gradient(135deg,var(--sunset),var(--clay));color:#fff;border:none;border-radius:7px;padding:4px 7px;font-size:11.5px;font-weight:800;cursor:pointer;line-height:1.2}
+  .ev-chip:hover{filter:brightness(1.05)}
+  .ev-chip .evtime{display:block;font-weight:600;font-size:10px;opacity:.95;margin-top:1px}
+  .rem-chip{display:block;width:100%;text-align:left;margin-top:3px;border:1px solid;border-radius:6px;padding:3px 6px;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+  .rem-chip:hover{filter:brightness(.97)}
+  .rem-chip.s-needs{background:#fdeccd;border-color:#eabb6a;color:#9a6b12}
+  .rem-chip.s-sched{background:#e4edfb;border-color:#a9c6f2;color:var(--lagoon)}
+  .rem-chip.s-sent{background:#d8f0e4;border-color:#a9dcc4;color:var(--green)}
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 2px 0;font-size:12px;color:var(--muted)}
-  .legend b{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:5px}
+  .legend b{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:5px}
 
   /* list view reuse */
   .card{background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:12px 0;padding:14px 18px;display:grid;grid-template-columns:90px 1fr auto;gap:16px;align-items:center;cursor:pointer}
@@ -214,30 +216,22 @@
     <div><b>Nothing sends without your approval.</b> Every email starts as <b>Needs approval</b> — you open it, review and edit the wording, then choose to <b>Approve</b>. Only after that does a manual, passcode-protected <b>Send now</b> button appear. There is <b>no automatic or background sending</b>. Setting the Vercel variables (<code>RESEND_API_KEY</code>, <code>RESEND_FROM</code>, <code>SEND_PASSCODE</code>) only turns the Send button on — it never sends anything by itself.</div>
   </div>
 
+  <div class="cal-head">
+    <div class="cal-title" id="calTitle"></div>
+    <div class="cal-nav"><button onclick="moveMonth(-1)">‹</button> <button onclick="moveMonth(1)">›</button></div>
+  </div>
+  <div class="cal">
+    <div class="dow"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+    <div class="weeks" id="weeks"></div>
+  </div>
+  <div class="legend">
+    <span><b style="background:linear-gradient(135deg,var(--sunset),var(--clay))"></b>Party (with time)</span>
+    <span><b style="background:#fdeccd;border:1px solid #eabb6a"></b>Email — not approved</span>
+    <span><b style="background:#e4edfb;border:1px solid #a9c6f2"></b>Email — scheduled</span>
+    <span><b style="background:#d8f0e4;border:1px solid #a9dcc4"></b>Email — sent</span>
+  </div>
+
   <div id="actionCenter"></div>
-
-  <div class="vtoggle">
-    <button id="vBoard" class="active" onclick="setView('board')">📋 Status board</button>
-    <button id="vCal" onclick="setView('cal')">📅 Calendar</button>
-  </div>
-
-  <div id="boardView"></div>
-
-  <div id="calView" class="hidden">
-    <div class="cal-head">
-      <div class="cal-title" id="calTitle"></div>
-      <div class="cal-nav"><button onclick="moveMonth(-1)">‹</button> <button onclick="moveMonth(1)">›</button></div>
-    </div>
-    <div class="cal">
-      <div class="dow"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
-      <div class="weeks" id="weeks"></div>
-    </div>
-    <div class="legend">
-      <span><b style="background:linear-gradient(135deg,var(--sungold),var(--sunset))"></b>Event</span>
-      <span><b style="background:#e4edfb"></b>PL task reminder (7 days before)</span>
-      <span><b style="background:#ffe6d2"></b>Attendee reminder (3, 2 &amp; day-of)</span>
-    </div>
-  </div>
 
   <footer>
     PL assignments &amp; edits save in this browser until Resend + a shared datastore are connected.<br>
@@ -359,6 +353,8 @@ function remindersOn(y,m,d){
   EVENTS.forEach(e=>reminders(e).forEach(r=>{const x=r.date;if(x.getFullYear()===y&&x.getMonth()===m&&x.getDate()===d)out.push({e,r});}));
   return out;
 }
+const CAL_ABBR={pl7:"PL",att3:"−3d",att2:"−2d",att0:"Day-of"};
+function shortCity(e){return (e.city||e.state).split(" ")[0].replace(/,$/,"");}
 function renderCal(){
   document.getElementById("calTitle").textContent=MOL[cur.m]+" "+cur.y;
   const first=new Date(cur.y,cur.m,1);
@@ -370,64 +366,17 @@ function renderCal(){
     const isToday=dbetween(dt,T0)===0;
     const evs=eventsOn(dt.getFullYear(),dt.getMonth(),dt.getDate());
     const rem=remindersOn(dt.getFullYear(),dt.getMonth(),dt.getDate());
-    const nPl=rem.filter(x=>x.r.kind==="pl").length, nAtt=rem.filter(x=>x.r.kind==="att").length;
-    html+=`<div class="cell ${out?'out':''} ${isToday?'today':''}">
-      <div class="dnum">${dt.getDate()}</div>
-      ${evs.map(e=>`<button class="chip ${dbetween(ymd(e.date),T0)<0?'past':''}" onclick="openModal('${e.id}')">${esc(e.city||e.state)}</button>`).join("")}
-      ${(nPl||nAtt)?`<div class="rmk">${nPl?`<span class="pl" title="PL task reminder(s)">✉ PL</span>`:""}${nAtt?`<span class="att" title="Attendee reminder(s)">✉ ${nAtt}</span>`:""}</div>`:""}
-    </div>`;
-    if(i%7===6 && i>=34 && dt.getMonth()!==cur.m && new Date(start).setDate(start.getDate()+i+1)) { /* keep 6 rows */ }
+    const evHtml=evs.map(e=>`<button class="ev-chip" onclick="openModal('${e.id}')" title="${esc(e.venue)}">🎉 ${esc(e.city||e.state)}<span class="evtime">${esc(e.time)}</span></button>`).join("");
+    const remHtml=rem.map(x=>{
+      const st=getStatus(x.e.id,x.r.key);
+      if(st==="skipped") return "";
+      const cls=st==="approved"?"s-sched":st==="sent"?"s-sent":"s-needs";
+      const word=cls==="s-needs"?"not approved":cls==="s-sched"?"scheduled":"sent";
+      return `<button class="rem-chip ${cls}" onclick="openModal('${x.e.id}')" title="${esc(x.e.city||x.e.state)} — ${x.r.name} (${word})">${esc(shortCity(x.e))} ${CAL_ABBR[x.r.key]}</button>`;
+    }).join("");
+    html+=`<div class="cell ${out?'out':''} ${isToday?'today':''}"><div class="dnum">${dt.getDate()}</div>${evHtml}${remHtml}</div>`;
   }
   document.getElementById("weeks").innerHTML=html;
-}
-
-/* ===== list ===== */
-function chipInfo(status){
-  if(status==="approved") return {cls:"b-sched",label:"Scheduled"};
-  if(status==="sent")     return {cls:"b-sent", label:"Sent ✓"};
-  if(status==="skipped")  return {cls:"b-skip", label:"Ignored"};
-  return {cls:"b-needs",label:"Needs approval"};
-}
-function renderBoard(){
-  let needs=0,sched=0,sent=0,ign=0;
-  EVENTS.forEach(e=>reminders(e).forEach(r=>{const s=getStatus(e.id,r.key);
-    s==="approved"?sched++:s==="sent"?sent++:s==="skipped"?ign++:needs++;}));
-  const sum=`<div class="board-sum">
-    <div class="sum-chip"><span class="sum-dot" style="background:#c98a1a"></span><span class="n">${needs}</span> Need approval</div>
-    <div class="sum-chip"><span class="sum-dot" style="background:var(--lagoon)"></span><span class="n">${sched}</span> Scheduled</div>
-    <div class="sum-chip"><span class="sum-dot" style="background:var(--green)"></span><span class="n">${sent}</span> Sent</div>
-    ${ign?`<div class="sum-chip"><span class="sum-dot" style="background:#cbd2da"></span><span class="n">${ign}</span> Ignored</div>`:""}
-  </div>`;
-  const evs=EVENTS.map(e=>({...e,_d:ymd(e.date)})).sort((a,b)=>a._d-b._d);
-  const rows=evs.map(e=>{
-    const dd=dbetween(e._d,T0);
-    const cd = dd<0?"Past":dd===0?"Today":dd===1?"Tomorrow":"in "+dd+" days";
-    const pl=getPL(e.id);
-    const plLine = pl.email ? esc(pl.name||pl.email) : `<span class="bwarn">⚠ PL unassigned</span>`;
-    const chips=reminders(e).map(r=>{
-      const info=chipInfo(getStatus(e.id,r.key));
-      return `<button class="bchip ${info.cls}" onclick="openModal('${e.id}')" title="${r.name} · sends ${fmtShort(r.date)}">
-        <span class="bck">${r.abbr}</span><span class="bcl">${info.label}</span><span class="bcd">${fmtShort(r.date)}</span>
-      </button>`;
-    }).join("");
-    return `<div class="brow ${dd<0?'past':''}">
-      <div class="bev" onclick="openModal('${e.id}')">
-        <div class="db"><div class="mo">${MO[e._d.getMonth()]}</div><div class="day">${e._d.getDate()}</div></div>
-        <div><div class="t">${esc(e.city||e.state)}</div><div class="s">${cd} · PL: ${plLine}</div></div>
-      </div>
-      <div class="bchips">${chips}</div>
-    </div>`;
-  }).join("");
-  document.getElementById("boardView").innerHTML=sum+rows;
-}
-
-function setView(v){
-  document.getElementById("vBoard").classList.toggle("active",v==="board");
-  document.getElementById("vCal").classList.toggle("active",v==="cal");
-  document.getElementById("boardView").classList.toggle("hidden",v!=="board");
-  document.getElementById("calView").classList.toggle("hidden",v!=="cal");
-  if(v==="cal") renderCal(); else renderBoard();
-  store.set("view",v);
 }
 
 /* ===== modal ===== */
@@ -685,8 +634,8 @@ let toastT;
 function toast(msg){const t=document.getElementById("toast");t.innerHTML=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),6000);}
 
 /* init */
+renderCal();
 renderActionCenter();
-setView(store.get("view","board")==="cal"?"cal":"board");
 </script>
 </body>
 </html>
