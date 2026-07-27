@@ -187,7 +187,7 @@
 <div class="wrap">
   <div class="banner" id="connBanner">
     <div>✉️</div>
-    <div><b>Sending is not connected yet.</b> The emails below are fully written and ready. To make “Schedule &amp; Send” actually deliver — including the daily auto-send on each due date — connect <b>Resend</b> (create the account, verify the abtaba.com domain, add the API key). Until then, each button lets you preview, copy, or open the email in your mail app.</div>
+    <div><b>Sending runs through Resend.</b> Once the Vercel environment variables are set (<code>RESEND_API_KEY</code>, <code>RESEND_FROM</code>, <code>SEND_PASSCODE</code>), the <b>Send now</b> button on any due email delivers it immediately — PL emails to the PL, attendee reminders to that location's RSVP list. You'll be asked for the send passcode once. (Hands-off auto-send on each due date is the next step.)</div>
   </div>
 
   <div id="actionCenter"></div>
@@ -274,6 +274,7 @@ function reminders(e){
     {kind:"pl",  key:"pl7",  off:-7, name:"PL task reminder",   toLabel:()=>{const pl=getPL(e.id);return pl.email?(pl.name||pl.email):"PL (unassigned)";}},
     {kind:"att", key:"att3", off:-3, name:"Attendee reminder #1", toLabel:()=>e.rsvps+" attendees"},
     {kind:"att", key:"att2", off:-2, name:"Attendee reminder #2", toLabel:()=>e.rsvps+" attendees"},
+    {kind:"att", key:"att0", off:0,  name:"Day-of reminder",      toLabel:()=>e.rsvps+" attendees"},
   ].map(r=>({...r, date:addDays(d,r.off)}));
 }
 function getPL(id){return store.get("pl:"+id,{name:"",email:""});}
@@ -298,6 +299,12 @@ function template(e,r){
     return {
       subject:`[Action needed] ${e.city||e.state} event is 1 week out — your checklist`,
       body:`Hi ${pl.name||"there"},\n\nThe ${e.city||e.state} Summer Appreciation Event is one week away:\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}\n\nPlease make sure these are handled before the day:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} RSVPs for your location. Let me know if you need anything from me.\n\nThank you!\n${ORGANIZER}`
+    };
+  }
+  if(r.off===0){
+    return {
+      subject:`🎉 Today's the day — ${e.city||e.state} Summer Appreciation Event!`,
+      body:`Hi there,\n\nToday's the day! We can't wait to see you at the Above & Beyond ABA Summer Appreciation Event this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nSee you there!\n— The ${FROM_NAME} Team`
     };
   }
   const days=Math.abs(r.off);
@@ -398,7 +405,7 @@ function openModal(id){
       controls=`${due?`<button class="btn primary" onclick="send('${r.key}','${r.kind}')">⚡ Send now</button>`:``}
         <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
         <button class="lnk" onclick="revoke('${r.key}')">Revoke approval</button>
-        <span class="foot-note">${due?"Approved &amp; due — send now (or auto-sends once Resend is on)":"✓ Approved — auto-sends "+fmtShort(r.date)+" once Resend is on"}</span>`;
+        <span class="foot-note">${due?"Approved &amp; due — click Send now to deliver":"✓ Approved — open on "+fmtShort(r.date)+" and click Send now"}</span>`;
     }else if(status==="sent"){
       controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <button class="lnk" onclick="markUnsent('${r.key}')">Mark unsent</button>
@@ -474,25 +481,64 @@ function openMailApp(key){
   const s=document.getElementById("subj:"+key).value, b=document.getElementById("body:"+key).value;
   window.location.href=`mailto:${encodeURIComponent(pl.email)}?subject=${encodeURIComponent(s)}&body=${encodeURIComponent(b)}`;
 }
+/* Pull attendee emails for a location straight from the RSVP page so the
+   list is always current. Excludes cross-location test emails and dedupes. */
+let _rsvpCache=null;
+async function loadRsvps(){
+  if(_rsvpCache) return _rsvpCache;
+  const html=await fetch("./index.html",{cache:"no-store"}).then(r=>r.text());
+  const i=html.indexOf("const INITIAL_DATA = ");
+  const s=html.indexOf("[",i), e=html.indexOf("];",s);
+  _rsvpCache=JSON.parse(html.slice(s,e+1));
+  return _rsvpCache;
+}
+async function attendeesFor(label){
+  const arr=await loadRsvps();
+  const states={};
+  arr.forEach(r=>{const em=(r.email||"").toLowerCase();if(!em)return;(states[em]=states[em]||new Set()).add(r.state);});
+  const test=new Set(Object.keys(states).filter(k=>states[k].size>=3));
+  const seen=new Set(), out=[];
+  arr.forEach(r=>{const em=(r.email||"").trim(), el=em.toLowerCase();
+    if(r.location===label && el.includes("@") && !test.has(el) && !seen.has(el)){seen.add(el);out.push(em);}});
+  return out;
+}
+function getSendPass(){
+  let p=sessionStorage.getItem("send_pass");
+  if(!p){ p=(prompt("Enter the send passcode (set as SEND_PASSCODE in Vercel):")||"").trim(); if(p) sessionStorage.setItem("send_pass",p); }
+  return p;
+}
 async function send(key,kind){
   const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
-  const s=document.getElementById("subj:"+key).value, b=document.getElementById("body:"+key).value;
+  const subject=document.getElementById("subj:"+key).value, text=document.getElementById("body:"+key).value;
   const pl=getPL(openId);
-  const recips = kind==="pl" ? (pl.email||"") : (e.rsvps+" attendees");
-  if(kind==="pl" && !pl.email){ toast("Add the PL's email above first."); return; }
-  const when = dbetween(r.date,T0)<=0 ? "immediately" : ("on "+fmtShort(r.date));
-  const count = kind==="pl" ? 1 : e.rsvps;
-  if(!confirm(`Send "${s}"\n\nTo: ${kind==="pl"?recips:count+" attendees ("+e.label+")"}\nWhen: ${when}\n\nProceed?`)) return;
+  const payload={subject,text};
+  let recipDesc;
+  if(kind==="pl"){
+    if(!pl.email){ toast("Add the PL's email above first."); return; }
+    payload.to=[pl.email]; recipDesc=pl.email;
+  }else{
+    toast("Gathering the attendee list…");
+    let list; try{ list=await attendeesFor(e.label); }catch(err){ toast("Couldn't load the attendee list."); return; }
+    if(!list.length){ toast("No attendee emails found for "+e.label+"."); return; }
+    payload.bcc=list; recipDesc=list.length+" attendees";
+  }
+  if(!confirm(`Send "${subject}"\n\nTo: ${recipDesc}${kind==="pl"?"":" ("+e.label+")"}\n\nThis sends immediately via Resend. Proceed?`)) return;
+  const pass=getSendPass(); if(!pass){ toast("Send cancelled — no passcode entered."); return; }
+  toast("Sending…");
   try{
-    const res=await fetch("/api/send",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({eventId:e.id,key,kind,subject:s,body:b,scheduledFor:r.date.toISOString(),label:e.label,plEmail:pl.email})});
+    const res=await fetch("/api/send",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify(payload)});
+    const j=await res.json().catch(()=>({}));
     if(res.ok){
       setStatus(openId,key,"sent");openModal(openId);renderActionCenter();
-      toast("✓ Scheduled/sent via Resend.");
+      toast(`✓ Sent to ${j.sent||recipDesc}.`);
+    }else if(res.status===401){
+      sessionStorage.removeItem("send_pass"); toast("Incorrect passcode — click Send now to try again.");
+    }else if(res.status===501){
+      toast("Resend isn't fully set up in Vercel yet: "+(j.error||"missing environment variables")+".");
     }else{
-      showSetup();
+      toast("Send failed: "+(j.error||("HTTP "+res.status)));
     }
-  }catch(err){ showSetup(); }
+  }catch(err){ toast("Couldn't reach the server ("+err.message+")."); }
 }
 /* ===== approval workflow ===== */
 function approve(key){
@@ -500,7 +546,7 @@ function approve(key){
   if(r.kind==="pl" && !getPL(openId).email){ toast("Add the PL's email above before approving."); return; }
   setStatus(openId,key,"approved");openModal(openId);renderActionCenter();
   const due=dbetween(r.date,T0)<=0;
-  toast(due?"Approved. It's due now — click Send now, or it auto-sends once Resend is on.":"Approved — will auto-send "+fmtShort(r.date)+" once Resend is connected.");
+  toast(due?"Approved &amp; due now — click Send now to deliver.":"Approved — open it on "+fmtShort(r.date)+" and click Send now.");
 }
 function revoke(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
 function skip(key){setStatus(openId,key,"skipped");openModal(openId);renderActionCenter();}
