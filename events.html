@@ -230,6 +230,7 @@
 /* ===== CANONICAL EVENT DATA (moves to /events.json when Resend is wired) ===== */
 const FROM_NAME = "Above & Beyond ABA";
 const ORGANIZER = "Liba";
+const REPLY_TO = "events@abtaba.com";  // replies land in this real inbox (send is from the verified updates.abtaba.com)
 const EVENTS = [
   {id:"co", state:"Colorado", city:"Centennial", label:"Colorado", venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"", date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null, notes:""},
   {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"", url:"", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
@@ -511,7 +512,7 @@ async function send(key,kind){
   const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
   const subject=document.getElementById("subj:"+key).value, text=document.getElementById("body:"+key).value;
   const pl=getPL(openId);
-  const payload={subject,text};
+  const payload={subject,text,replyTo:REPLY_TO};
   let recipDesc;
   if(kind==="pl"){
     if(!pl.email){ toast("Add the PL's email above first."); return; }
