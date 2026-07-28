@@ -40,14 +40,14 @@ export default async function handler(req, res) {
       const count = j.kind === 'pl' ? 1 : ((auds[j.label] || []).length);
       const who = j.kind === 'pl' ? (j.plEmail || '(no PL email)') : (count + ' attendees (' + j.label + ')');
       const link = origin + '/api/approve-send?id=' + encodeURIComponent(id) + '&t=' + tokenFor(id);
+      const approveAddr = 'approve.' + j.eventId + '.' + j.key + '.' + tokenFor(id) + '@updates.abtaba.com';
       if (dry) { previews.push({ id, to: who, sendOn: j.sendOn }); continue; }
       try {
         await resend.emails.send({
-          from, to: [DIGEST_TO],
+          from, to: [DIGEST_TO], replyTo: approveAddr,
           subject: `Approve to send — ${j.subject}  (sends ${j.sendOn})`,
           text: `This reminder is scheduled to send on ${j.sendOn} to ${who}.\n\n`
-            + `Review it below, then APPROVE to release it:\n${link}\n\n`
-            + `(You can also reply "approve" to this email once reply-approval is enabled.)\n\n`
+            + `TO APPROVE: reply "approve" to this email, or tap this link:\n${link}\n\n`
             + `If you do nothing, it will NOT send.\n\n`
             + `----- EMAIL PREVIEW -----\nSubject: ${j.subject}\n\n${j.body}`,
         });

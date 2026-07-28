@@ -335,7 +335,7 @@ function template(e,r){
     const pl=getPL(e.id);
     return {
       subject:`${place} Summer Appreciation Event — PL details (${sd})`,
-      body:`Hi ${pl.name||"there"},\n\nThank you for serving as Party Lead for the ${place} Summer Appreciation Event — one week from today. We're very excited to celebrate your team's hard work.\n\n${details}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location. Please don't hesitate to reach out with any questions.\n\nWarm regards,\n${ORGANIZER}`
+      body:`Hi ${pl.name||"there"},\n\nThank you for helping out with the ${place} Summer Appreciation Event!\n\n${details}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location. Please don't hesitate to reach out with any questions.\n\nWarm regards,\n${ORGANIZER}`
     };
   }
   if(r.extra){
