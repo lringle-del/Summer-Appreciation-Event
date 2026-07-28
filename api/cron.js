@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     try {
       let sent = 0;
       if (j.kind === 'pl') {
-        const r = await resend.emails.send({ from, to: recipients, cc: (j.cc && j.cc.length) ? j.cc : undefined, subject: j.subject, text: j.body, replyTo: j.replyTo });
+        const r = await resend.emails.send({ from, to: recipients, bcc: (j.bcc && j.bcc.length) ? j.bcc : undefined, subject: j.subject, text: j.body, replyTo: j.replyTo });
         if (r.error) throw new Error(r.error.message || 'Resend error');
         sent = recipients.length;
       } else {
