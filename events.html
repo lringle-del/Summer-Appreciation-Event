@@ -353,12 +353,12 @@ function template(e,r){
   const days=Math.abs(r.off);
   if(days===2){
     return {
-      subject:`2 days — ${place} Summer Appreciation Event — ${sd}`,
+      subject:`2 days away — see you ${sd} at ${e.venue}`,
       body:`Hi there,\n\nJust two days to go! We can't wait to celebrate you and everything you've accomplished at the Above & Beyond ABA Summer Appreciation Event. Here's a quick reminder of the details:\n\n${details}\n${blurb}\nWe'd love to see you there — please plan to arrive a few minutes early, and kindly reply if anything has changed so we can update our headcount.\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   return {
-    subject:`${place} Summer Appreciation Event — ${sd}`,
+    subject:`See you ${sd} at ${e.venue}`,
     body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event, and we hope you'll join us. Here are the details:\n\n${details}\n${blurb}\nPlease plan to arrive a few minutes early. If your plans have changed, kindly reply so we can update our headcount.\n\nWe look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
   };
 }
