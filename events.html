@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --vanilla:#f5f0e5; --biscuit:#e8dbc4; --parchment:#ebd1ab;
@@ -250,6 +251,7 @@
   <div class="modal" id="modal"></div>
 </div>
 <div class="toast" id="toast"></div>
+<input type="file" id="listFile" accept=".xlsx,.xls,.csv" style="display:none">
 
 <script>
 /* ===== CANONICAL EVENT DATA (moves to /events.json when Resend is wired) ===== */
@@ -398,7 +400,8 @@ function openModal(id){
   const emails=reminders(e).map(r=>{
     const m=getEmail(e,r);const status=getStatus(id,r.key);const st=statusPill(status,r.date);
     const due=dbetween(r.date,T0)<=0;
-    const toDetail = r.kind==="pl" ? (pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>') : (e.rsvps+" attendees at "+esc(e.label));
+    const _ac=audienceCount(e.label);
+    const toDetail = r.kind==="pl" ? (pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>') : (_ac!=null?(_ac+" on uploaded list"):(e.rsvps+" (RSVP list — no upload yet)"));
     const mailBtn = r.kind==="pl"&&pl.email?`<button class="btn ghost" onclick="openMailApp('${r.key}')">Open in mail app</button>`:"";
     let controls;
     if(status==="draft"){
@@ -453,6 +456,13 @@ function openModal(id){
         <div><label>Party Lead</label><input id="plname" value="${esc(pl.name)}" placeholder="Name" oninput="savePL()"></div>
         <div><label>PL email</label><input id="plemail" type="email" value="${esc(pl.email)}" placeholder="name@abtaba.com" onchange="savePL(true)"></div>
         <label class="plchk ${conf?'on':''}" id="plchk"><input type="checkbox" ${conf?'checked':''} onchange="saveConf(this.checked)">${conf?"On it ✓":"PL is on it"}</label>
+      </div>
+      <div class="plbox" style="grid-template-columns:1fr auto">
+        <div>
+          <label>Attendee list — who gets the reminders</label>
+          <div style="font-size:13.5px;font-weight:600">${(()=>{const ac=audienceCount(e.label);return ac!=null?`<b>${ac}</b> emails uploaded`:`No list uploaded — falls back to RSVP list (<b>${e.rsvps}</b>)`;})()}</div>
+        </div>
+        <button class="btn ghost" onclick="uploadList('${e.id}')">⬆ Upload list</button>
       </div>
       <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800;margin:4px 0 2px">Reminder emails</div>
       ${emails}
@@ -657,9 +667,59 @@ function renderAlert(){
 }
 function refreshAll(){ renderCal(); renderActionCenter(); renderAlert(); }
 
+/* ===== attendee audiences (uploaded lists, stored privately in Blob) ===== */
+let AUD_COUNTS = {};
+async function loadAudiences(){
+  try{ const r=await fetch("/api/audience",{cache:"no-store"}); if(r.ok){ const j=await r.json(); AUD_COUNTS=j.counts||{}; } }catch{}
+}
+function audienceCount(label){ return Object.prototype.hasOwnProperty.call(AUD_COUNTS,label)?AUD_COUNTS[label]:null; }
+function extractEmailsFromWorkbook(wb){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
+  const out=new Set(); const rx=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  if(!rows.length) return [];
+  const header=rows[0].map(h=>String(h).toLowerCase().trim());
+  let emailCol=header.indexOf("email");
+  if(emailCol<0) emailCol=header.findIndex(h=>h.includes("email")&&!h.includes("additional")&&!h.includes("guardian"));
+  let activeCol=header.findIndex(h=>h.replace(/\s+/g,"")==="isactive"||h==="active");
+  if(emailCol<0){ rows.forEach(r=>r.forEach(c=>{const v=String(c).trim(); if(rx.test(v))out.add(v);})); return [...out]; }
+  for(let i=1;i<rows.length;i++){
+    const em=String(rows[i][emailCol]||"").trim();
+    if(activeCol>=0){ const a=String(rows[i][activeCol]||"").trim().toLowerCase(); if(a!==""&&a!=="1"&&a!=="true"&&a!=="yes"&&a!=="active") continue; }
+    if(rx.test(em)) out.add(em);
+  }
+  return [...out];
+}
+function uploadList(eventId){
+  const e=EVENTS.find(x=>x.id===eventId);
+  const inp=document.getElementById("listFile");
+  inp.value="";
+  inp.onchange=async()=>{
+    const file=inp.files[0]; if(!file) return;
+    toast("Reading "+file.name+"…");
+    let emails;
+    try{ const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:"array"}); emails=extractEmailsFromWorkbook(wb); }
+    catch(err){ toast("Couldn't read that file ("+err.message+")."); return; }
+    if(!emails.length){ toast("No email addresses found in that file."); return; }
+    if(!confirm(`Save ${emails.length} emails as the ${e.city||e.state} attendee list?\n\nThese are who will receive the attendee reminders.`)) return;
+    const pass=getSendPass(); if(!pass){ toast("Passcode needed to save the list."); return; }
+    toast("Saving "+emails.length+" emails…");
+    try{
+      const res=await fetch("/api/audience",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify({label:e.label,emails})});
+      const j=await res.json().catch(()=>({}));
+      if(res.ok){ AUD_COUNTS[e.label]=j.count; toast(`✓ Saved ${j.count} emails for ${e.city||e.state}.`); openModal(eventId); }
+      else if(res.status===401){ sessionStorage.removeItem("send_pass"); toast("Incorrect passcode — try again."); }
+      else if(res.status===501){ toast("Server not fully configured: "+(j.error||"")); }
+      else{ toast("Save failed: "+(j.error||("HTTP "+res.status))); }
+    }catch(err){ toast("Couldn't reach the server ("+err.message+")."); }
+  };
+  inp.click();
+}
+
 /* init */
 renderCal();
 refreshAll();
+loadAudiences().then(()=>{ if(openId) openModal(openId); });
 </script>
 </body>
 </html>
