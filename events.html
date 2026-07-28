@@ -63,8 +63,8 @@
   .rem-chip{display:block;width:100%;text-align:left;margin-top:3px;border:1px solid;border-radius:6px;padding:3px 6px;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
   .rem-chip:hover{filter:brightness(.97)}
   .rem-chip.s-needs{background:#fdeccd;border-color:#eabb6a;color:#9a6b12}
-  .rem-chip.s-sched{background:#e4edfb;border-color:#a9c6f2;color:var(--lagoon)}
-  .rem-chip.s-sent{background:#d8f0e4;border-color:#a9dcc4;color:var(--green)}
+  .rem-chip.s-sched{background:#dcf2e6;border-color:#8fd3b3;color:#1f7a56}
+  .rem-chip.s-sent{background:var(--green);border-color:var(--green);color:#fff}
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 2px 0;font-size:12px;color:var(--muted)}
   .legend b{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:5px}
 
@@ -134,10 +134,15 @@
   .st,.tg{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap}
   .em-h .st{margin-left:auto}
   .c-needs{background:#fdeccd;color:#9a6b12}
-  .c-appr{background:#e4edfb;color:var(--lagoon)}
+  .c-appr{background:#dcf2e6;color:#1f7a56}
   .c-due{background:var(--clay);color:#fff}
-  .c-sent{background:#d8f0e4;color:var(--green)}
+  .c-sent{background:var(--green);color:#fff}
   .c-skip{background:#e6e9ee;color:var(--muted)}
+  /* alert bar */
+  .alertbar{display:flex;gap:11px;align-items:center;border-radius:12px;padding:12px 16px;margin:16px 0 2px;font-size:13.5px}
+  .alertbar .ab-i{font-size:19px;line-height:1}
+  .alertbar.warn{background:#fdecec;border:1px solid #f0b6b6;border-left:4px solid var(--clay);color:#8a2b1a}
+  .alertbar.ok{background:#e7f6ee;border:1px solid #b7e2ca;border-left:4px solid var(--green);color:#1f7a56}
 
   /* action center */
   .ac{background:var(--white);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px 18px;margin:18px 0 4px}
@@ -216,6 +221,8 @@
     <div><b>Nothing sends without your approval.</b> Every email starts as <b>Needs approval</b> — you open it, review and edit the wording, then choose to <b>Approve</b>. Only after that does a manual, passcode-protected <b>Send now</b> button appear. There is <b>no automatic or background sending</b>. Setting the Vercel variables (<code>RESEND_API_KEY</code>, <code>RESEND_FROM</code>, <code>SEND_PASSCODE</code>) only turns the Send button on — it never sends anything by itself.</div>
   </div>
 
+  <div id="alertBar"></div>
+
   <div class="cal-head">
     <div class="cal-title" id="calTitle"></div>
     <div class="cal-nav"><button onclick="moveMonth(-1)">‹</button> <button onclick="moveMonth(1)">›</button></div>
@@ -227,8 +234,8 @@
   <div class="legend">
     <span><b style="background:linear-gradient(135deg,var(--sunset),var(--clay))"></b>Party (with time)</span>
     <span><b style="background:#fdeccd;border:1px solid #eabb6a"></b>Email — not approved</span>
-    <span><b style="background:#e4edfb;border:1px solid #a9c6f2"></b>Email — scheduled</span>
-    <span><b style="background:#d8f0e4;border:1px solid #a9dcc4"></b>Email — sent</span>
+    <span><b style="background:#dcf2e6;border:1px solid #8fd3b3"></b>Email — scheduled</span>
+    <span><b style="background:#2f9e6f;border:1px solid #2f9e6f"></b>Email — sent</span>
   </div>
 
   <div id="actionCenter"></div>
@@ -305,7 +312,7 @@ function statusPill(status,rd){
   if(status==="skipped") return {cls:"c-skip",txt:"Ignored"};
   const due=dbetween(rd,T0)<=0;
   if(status==="draft") return {cls:"c-needs",txt:due?"Needs approval · overdue":"Needs approval"};
-  return due ? {cls:"c-due",txt:"Approved · due now"} : {cls:"c-appr",txt:"Approved · "+fmtShort(rd)};
+  return {cls:"c-appr",txt:due?"Scheduled · due now":"Scheduled · "+fmtShort(rd)};
 }
 
 /* ===== email templates ===== */
@@ -395,7 +402,7 @@ function openModal(id){
     const mailBtn = r.kind==="pl"&&pl.email?`<button class="btn ghost" onclick="openMailApp('${r.key}')">Open in mail app</button>`:"";
     let controls;
     if(status==="draft"){
-      controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve</button>
+      controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve &amp; schedule</button>
         <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
         <button class="lnk" onclick="resetMail('${r.key}')">Reset</button>
         <button class="lnk" onclick="skip('${r.key}')">Ignore</button>
@@ -528,7 +535,7 @@ async function send(key,kind){
     const res=await fetch("/api/send",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify(payload)});
     const j=await res.json().catch(()=>({}));
     if(res.ok){
-      setStatus(openId,key,"sent");openModal(openId);renderActionCenter();
+      setStatus(openId,key,"sent");openModal(openId);refreshAll();
       toast(`✓ Sent to ${j.sent||recipDesc}.`);
     }else if(res.status===401){
       sessionStorage.removeItem("send_pass"); toast("Incorrect passcode — click Send now to try again.");
@@ -543,23 +550,23 @@ async function send(key,kind){
 function approve(key){
   const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
   if(r.kind==="pl" && !getPL(openId).email){ toast("Add the PL's email above before approving."); return; }
-  setStatus(openId,key,"approved");openModal(openId);renderActionCenter();
+  setStatus(openId,key,"approved");openModal(openId);refreshAll();
   const due=dbetween(r.date,T0)<=0;
   toast(due?"Approved &amp; due now — click Send now to deliver.":"Approved — open it on "+fmtShort(r.date)+" and click Send now.");
 }
-function revoke(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
-function skip(key){setStatus(openId,key,"skipped");openModal(openId);renderActionCenter();}
-function restore(key){setStatus(openId,key,"draft");openModal(openId);renderActionCenter();}
+function revoke(key){setStatus(openId,key,"draft");openModal(openId);refreshAll();}
+function skip(key){setStatus(openId,key,"skipped");openModal(openId);refreshAll();}
+function restore(key){setStatus(openId,key,"draft");openModal(openId);refreshAll();}
 /* ignore straight from a to-do row (no need to open the event) */
 function ignoreItem(id,key){
   setStatus(id,key,"skipped");
-  renderActionCenter();
+  refreshAll();
   if(openId===id) openModal(id);
   const e=EVENTS.find(x=>x.id===id);const r=reminders(e).find(x=>x.key===key);
   toast(`Ignored — ${esc(e.city||e.state)} ${r.name} won't send. <a href="#" onclick="restoreItem('${id}','${key}');return false;">Undo</a>`);
 }
-function restoreItem(id,key){setStatus(id,key,"draft");renderActionCenter();if(openId===id)openModal(id);document.getElementById("toast").classList.remove("show");}
-function markUnsent(key){setStatus(openId,key,"approved");openModal(openId);renderActionCenter();}
+function restoreItem(id,key){setStatus(id,key,"draft");refreshAll();if(openId===id)openModal(id);document.getElementById("toast").classList.remove("show");}
+function markUnsent(key){setStatus(openId,key,"approved");openModal(openId);refreshAll();}
 
 /* ===== To-Do: what sends today, and what's coming this week ===== */
 function todoTag(status){
@@ -633,9 +640,26 @@ function showSetup(){
 let toastT;
 function toast(msg){const t=document.getElementById("toast");t.innerHTML=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),6000);}
 
+/* ===== alert: tell me what's not scheduled ===== */
+function renderAlert(){
+  const items=[];
+  EVENTS.forEach(e=>reminders(e).forEach(r=>{
+    if(getStatus(e.id,r.key)!=="draft") return;
+    const d=dbetween(r.date,T0);
+    if(d<=7) items.push({e,r,d});               // overdue or due within a week, not yet scheduled
+  }));
+  const el=document.getElementById("alertBar");
+  if(!items.length){ el.style.display="none"; return; }
+  el.style.display="";
+  const n=items.length, overdue=items.filter(x=>x.d<0).length;
+  el.className="alertbar warn";
+  el.innerHTML=`<span class="ab-i">⚠️</span><div><b>${n} reminder${n>1?"s":""} coming up ${n>1?"are":"is"} NOT scheduled${overdue?` — ${overdue} already overdue`:""}.</b> On the calendar these show in <b>amber</b>; open each (or use the To-Do below) and click <b>Approve &amp; schedule</b> so ${n>1?"they":"it"} will send on time.</div>`;
+}
+function refreshAll(){ renderCal(); renderActionCenter(); renderAlert(); }
+
 /* init */
 renderCal();
-renderActionCenter();
+refreshAll();
 </script>
 </body>
 </html>
