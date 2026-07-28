@@ -239,9 +239,23 @@ function testEmails(records){
 const STATE_ORDER = r=>r; // rendered by count
 let hideTests=true, search="", stateSel="";
 
+/* Collapse duplicate submissions: one entry per email per event location.
+   Keeps the first submission but upgrades to a plus-one if any duplicate had one.
+   Rows with no email are left as-is (can't be matched reliably). */
+function dedupe(records){
+  const seen={}; const out=[];
+  for(const r of records){
+    const email=(r.email||"").trim().toLowerCase();
+    if(!email){ out.push(r); continue; }
+    const key=email+"|"+(r.location||"");
+    if(!(key in seen)){ seen[key]=out.length; out.push(r); }
+    else { const i=seen[key]; if(out[i].plusOne!=="Yes" && r.plusOne==="Yes") out[i]=r; }
+  }
+  return out;
+}
 function activeRecords(){
   const tset=testEmails(DATA);
-  let recs=DATA;
+  let recs=dedupe(DATA);
   if(hideTests) recs=recs.filter(r=>!tset.has((r.email||"").toLowerCase()));
   return {recs,tset};
 }
