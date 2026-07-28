@@ -260,7 +260,7 @@ const ORGANIZER = "Liba";
 const REPLY_TO = "events@abtaba.com";  // replies land in this real inbox (send is from the verified updates.abtaba.com)
 const EVENTS = [
   {id:"co", state:"Colorado", city:"Centennial", label:"Colorado", venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"", date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null, notes:""},
-  {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"", url:"", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
+  {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"8400 N Oklahoma Ave, Oklahoma City, OK 73114", url:"https://chickennpickle.com/location/oklahoma-city/", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
   {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"The Zinc House", address:"", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, notes:""},
   {id:"tulsa", state:"Oklahoma", city:"Tulsa", label:"Tulsa, OK", venue:"Courts & Commons", address:"7921 E 119th Dr, Bixby, OK 74008", url:"", date:"2026-08-06", time:"7:00–9:00 PM", est:75, rsvps:34, budget:null, perPerson:null, notes:""},
   {id:"omaha", state:"Nebraska", city:"Omaha", label:"Nebraska", venue:"Backlot Pizza & Kitchen (Elkhorn)", address:"6200 South 205th Plaza, Omaha, NE 68022", url:"https://www.backlotpizzaandkitchen.com/location/backlot-pizza-elkhorn/", date:"2026-08-10", time:"TBD", est:500, rsvps:197, budget:20000, perPerson:40, notes:"Dinner at Backlot Pizza, then a movie at ACX Cinemas.", blurb:"Stick around after dinner — we've got a movie at ACX Cinemas!"},
@@ -325,20 +325,20 @@ function template(e,r){
     const pl=getPL(e.id);
     return {
       subject:`[Action needed] ${e.city||e.state} event is 1 week out — your checklist`,
-      body:`Hi ${pl.name||"there"},\n\nYou're the Party Lead for the ${e.city||e.state} Summer Appreciation Event — one week away:\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location.\n\nIf you have any questions, just reach out to me anytime.\n\nThank you so much!\n${ORGANIZER}`
+      body:`Hi ${pl.name||"there"},\n\nYou're the Party Lead for the ${e.city||e.state} Summer Appreciation Event — one week away:\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${e.url?("\n🔗 "+e.url):""}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location.\n\nIf you have any questions, just reach out to me anytime.\n\nThank you so much!\n${ORGANIZER}`
     };
   }
   if(r.off===0){
     return {
       subject:`🎉 Today's the day — ${e.city||e.state} Summer Appreciation Event!`,
-      body:`Hi there,\n\nToday's the day! We can't wait to see you at the Above & Beyond ABA Summer Appreciation Event this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nSee you there!\n— The ${FROM_NAME} Team`
+      body:`Hi there,\n\nToday's the day! We can't wait to see you at the Above & Beyond ABA Summer Appreciation Event this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${e.url?("\n🔗 "+e.url):""}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nSee you there!\n— The ${FROM_NAME} Team`
     };
   }
   const days=Math.abs(r.off);
   const lead = days===3 ? "just a few days away" : "almost here — only 2 days to go";
   return {
     subject:`${days===2?"2 days to go! ":""}See you at the ${e.city||e.state} Summer Appreciation Event 🎉`,
-    body:`Hi there,\n\nThe Above & Beyond ABA Summer Appreciation Event is ${lead}! We can't wait to celebrate with you.\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nPlease plan to arrive a few minutes early. If your plans have changed, reply to let us know so we can update the headcount.\n\nSee you there!\n— The ${FROM_NAME} Team`
+    body:`Hi there,\n\nThe Above & Beyond ABA Summer Appreciation Event is ${lead}! We can't wait to celebrate with you.\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${e.url?("\n🔗 "+e.url):""}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nPlease plan to arrive a few minutes early. If your plans have changed, reply to let us know so we can update the headcount.\n\nSee you there!\n— The ${FROM_NAME} Team`
   };
 }
 function getEmail(e,r){
