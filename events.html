@@ -136,6 +136,7 @@
   .em-h .st{margin-left:auto}
   .c-needs{background:#fdeccd;color:#9a6b12}
   .c-appr{background:#dcf2e6;color:#1f7a56}
+  .c-sched{background:#e4edfb;color:#457acc}
   .c-due{background:var(--clay);color:#fff}
   .c-sent{background:var(--green);color:#fff}
   .c-skip{background:#e6e9ee;color:var(--muted)}
@@ -311,15 +312,26 @@ async function loadPLs(){ try{ const r=await fetch("/api/pl",{cache:"no-store"})
 async function loadDirectors(){ try{ const r=await fetch("/api/director",{cache:"no-store"}); if(r.ok){ SERVER_DIRECTORS=(await r.json()).directors||{}; } }catch{} }
 function getPL(id){ if(SERVER_PLS[id]&&SERVER_PLS[id].email) return SERVER_PLS[id]; return store.get("pl:"+id,{name:"",email:""}); }
 function getDirector(id){ return SERVER_DIRECTORS[id]||""; }
-/* per-email status comes from the server job: draft -> approved -> sent (or skipped) */
-function getStatus(id,key){ const j=SERVER_JOBS[id+":"+key]; if(!j) return "draft"; return j.sentAt?"sent":j.status; }
+/* per-email status pipeline: draft -> scheduled -> preview (sent, awaiting your OK)
+   -> confirmed (you approved the preview) -> sent.  (or skipped) */
+function getStatus(id,key){
+  const j=SERVER_JOBS[id+":"+key]; if(!j) return "draft";
+  if(j.sentAt) return "sent";
+  if(j.status==="skipped") return "skipped";
+  if(j.status!=="approved") return "draft";
+  if(j.okToSend) return "confirmed";
+  if(j.previewSentAt) return "preview";
+  return "scheduled";
+}
 function isoDate(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
 function statusPill(status,rd){
-  if(status==="sent") return {cls:"c-sent",txt:"Sent ✓"};
-  if(status==="skipped") return {cls:"c-skip",txt:"Ignored"};
   const due=dbetween(rd,T0)<=0;
-  if(status==="draft") return {cls:"c-needs",txt:due?"Needs approval · overdue":"Needs approval"};
-  return {cls:"c-appr",txt:due?"Scheduled · due now":"Scheduled · "+fmtShort(rd)};
+  if(status==="sent")      return {cls:"c-sent", txt:"Sent ✓"};
+  if(status==="skipped")   return {cls:"c-skip", txt:"Ignored"};
+  if(status==="confirmed") return {cls:"c-appr", txt:"Approved ✓ · sends "+fmtShort(rd)};
+  if(status==="preview")   return {cls:"c-due",  txt:"Preview sent — approve it"};
+  if(status==="scheduled") return {cls:"c-sched",txt:"Scheduled · preview "+fmtShort(addDays(rd,-1))};
+  return {cls:"c-needs", txt:due?"Needs approval · overdue":"Needs approval"};
 }
 
 /* ===== email templates ===== */
@@ -399,7 +411,7 @@ function renderCal(){
     const remHtml=rem.map(x=>{
       const st=getStatus(x.e.id,x.r.key);
       if(st==="skipped") return "";
-      const cls=st==="approved"?"s-sched":st==="sent"?"s-sent":"s-needs";
+      const cls=st==="sent"?"s-sent":(st==="confirmed"||st==="scheduled")?"s-sched":"s-needs";
       const word=cls==="s-needs"?"not approved":cls==="s-sched"?"scheduled":"sent";
       return `<button class="rem-chip ${cls}" onclick="openModal('${x.e.id}')" title="${esc(x.e.city||x.e.state)} — ${x.r.name} (${word})">${esc(shortCity(x.e))} ${CAL_ABBR[x.r.key]||x.r.abbr||""}</button>`;
     }).join("");
@@ -431,10 +443,15 @@ function openModal(id){
         <button class="lnk" onclick="resetMail('${r.key}')">Reset</button>
         <button class="lnk" onclick="skip('${r.key}')">Ignore</button>
         <span class="foot-note">Not scheduled — approve to auto-send on ${fmtShort(r.date)}</span>`;
-    }else if(status==="approved"){
+    }else if(status==="scheduled"||status==="preview"||status==="confirmed"){
+      const note = status==="confirmed"
+        ? "✓ Approved — will send "+fmtShort(r.date)+"."
+        : status==="preview"
+          ? "📨 Preview sent to you — reply “approve” (or tap the button in it) to confirm. It won't send until you do."
+          : "✓ Scheduled — you'll get a preview to approve the day before it sends ("+fmtShort(r.date)+").";
       controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <button class="lnk" onclick="revoke('${r.key}')">Revoke</button>
-        <span class="foot-note">✓ Scheduled — you'll get a preview to approve the day before it sends (${fmtShort(r.date)})</span>`;
+        <span class="foot-note">${note}</span>`;
     }else if(status==="sent"){
       controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <span class="foot-note">✓ Sent</span>`;
@@ -575,8 +592,11 @@ async function restoreItem(id,key){ if(await scheduleAction(id+":"+key,"remove")
 
 /* ===== To-Do: what sends today, and what's coming this week ===== */
 function todoTag(status){
-  if(status==="sent") return {t:"Sent ✓",c:"c-sent"};
-  if(status==="approved") return {t:"Scheduled",c:"c-appr"};
+  if(status==="sent")      return {t:"Sent ✓",c:"c-sent"};
+  if(status==="confirmed") return {t:"Approved ✓",c:"c-appr"};
+  if(status==="preview")   return {t:"Preview sent — approve",c:"c-due"};
+  if(status==="scheduled") return {t:"Scheduled",c:"c-sched"};
+  if(status==="skipped")   return {t:"Ignored",c:"c-skip"};
   return {t:"Not scheduled",c:"c-needs"};
 }
 function todoRow(x){

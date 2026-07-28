@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const all = await readJSON(KEY, {});
     const jobs = {};
-    for (const k in all) jobs[k] = { status: all[k].status, sentAt: all[k].sentAt || null, sendOn: all[k].sendOn || null, sentCount: all[k].sentCount || null };
+    for (const k in all) jobs[k] = { status: all[k].status, sentAt: all[k].sentAt || null, sendOn: all[k].sendOn || null, sentCount: all[k].sentCount || null, okToSend: !!all[k].okToSend, previewSentAt: all[k].previewSentAt || null };
     return res.status(200).json({ jobs });
   }
 
