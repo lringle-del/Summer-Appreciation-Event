@@ -218,8 +218,8 @@
 
 <div class="wrap">
   <div class="banner" id="connBanner">
-    <div>🔒</div>
-    <div><b>Nothing sends without your approval.</b> Every email starts as <b>Needs approval</b> — you open it, review and edit the wording, then choose to <b>Approve</b>. Only after that does a manual, passcode-protected <b>Send now</b> button appear. There is <b>no automatic or background sending</b>. Setting the Vercel variables (<code>RESEND_API_KEY</code>, <code>RESEND_FROM</code>, <code>SEND_PASSCODE</code>) only turns the Send button on — it never sends anything by itself.</div>
+    <div>✅</div>
+    <div><b>Approve once — it sends itself.</b> Each email starts as <b>Needs approval</b>. When you review and click <b>Approve &amp; schedule</b>, it turns green and <b>sends automatically on its date</b> — no “send now,” nothing else to do. Emails you don't approve never send. A daily job (each morning) does the sending and emails you a short digest of what went out.</div>
   </div>
 
   <div id="alertBar"></div>
@@ -305,10 +305,14 @@ function reminders(e){
     {kind:"att", key:"att0", off:0,  abbr:"Day-of",    name:"Day-of reminder",      toLabel:()=>e.rsvps+" attendees"},
   ].map(r=>({...r, date:addDays(d,r.off)}));
 }
-function getPL(id){return store.get("pl:"+id,{name:"",email:""});}
-/* per-email workflow status: draft -> approved -> sent (or skipped) */
-function getStatus(id,key){return store.get("status:"+id+":"+key,"draft");}
-function setStatus(id,key,v){store.set("status:"+id+":"+key,v);}
+/* server-backed state (approvals + PLs live in the private Blob store) */
+let SERVER_JOBS={}, SERVER_PLS={};
+async function loadSchedule(){ try{ const r=await fetch("/api/schedule",{cache:"no-store"}); if(r.ok){ SERVER_JOBS=(await r.json()).jobs||{}; } }catch{} }
+async function loadPLs(){ try{ const r=await fetch("/api/pl",{cache:"no-store"}); if(r.ok){ SERVER_PLS=(await r.json()).pls||{}; } }catch{} }
+function getPL(id){ if(SERVER_PLS[id]&&SERVER_PLS[id].email) return SERVER_PLS[id]; return store.get("pl:"+id,{name:"",email:""}); }
+/* per-email status comes from the server job: draft -> approved -> sent (or skipped) */
+function getStatus(id,key){ const j=SERVER_JOBS[id+":"+key]; if(!j) return "draft"; return j.sentAt?"sent":j.status; }
+function isoDate(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
 function statusPill(status,rd){
   if(status==="sent") return {cls:"c-sent",txt:"Sent ✓"};
   if(status==="skipped") return {cls:"c-skip",txt:"Ignored"};
@@ -402,22 +406,19 @@ function openModal(id){
     const due=dbetween(r.date,T0)<=0;
     const _ac=audienceCount(e.label);
     const toDetail = r.kind==="pl" ? (pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>') : (_ac!=null?(_ac+" on uploaded list"):(e.rsvps+" (RSVP list — no upload yet)"));
-    const mailBtn = r.kind==="pl"&&pl.email?`<button class="btn ghost" onclick="openMailApp('${r.key}')">Open in mail app</button>`:"";
     let controls;
     if(status==="draft"){
       controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve &amp; schedule</button>
-        <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
+        <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <button class="lnk" onclick="resetMail('${r.key}')">Reset</button>
         <button class="lnk" onclick="skip('${r.key}')">Ignore</button>
-        <span class="foot-note">Needs approval before it can send</span>`;
+        <span class="foot-note">Not scheduled — approve to auto-send on ${fmtShort(r.date)}</span>`;
     }else if(status==="approved"){
-      controls=`${due?`<button class="btn primary" onclick="send('${r.key}','${r.kind}')">⚡ Send now</button>`:``}
-        <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>${mailBtn}
-        <button class="lnk" onclick="revoke('${r.key}')">Revoke approval</button>
-        <span class="foot-note">${due?"Approved &amp; due — click Send now to deliver":"✓ Approved — open on "+fmtShort(r.date)+" and click Send now"}</span>`;
+      controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
+        <button class="lnk" onclick="revoke('${r.key}')">Revoke</button>
+        <span class="foot-note">${due?"✓ Scheduled &amp; due — the daily job sends it (runs each morning)":"✓ Scheduled — auto-sends "+fmtShort(r.date)+", no action needed"}</span>`;
     }else if(status==="sent"){
       controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
-        <button class="lnk" onclick="markUnsent('${r.key}')">Mark unsent</button>
         <span class="foot-note">✓ Sent</span>`;
     }else{ /* skipped */
       controls=`<button class="lnk" onclick="restore('${r.key}')">Restore</button>
@@ -475,8 +476,12 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 
 function savePL(reRender){
   const pl={name:document.getElementById("plname").value,email:document.getElementById("plemail").value.trim()};
-  store.set("pl:"+openId,pl);
-  if(reRender)openModal(openId);
+  store.set("pl:"+openId,pl); SERVER_PLS[openId]=pl;
+  if(reRender){
+    const pass=sessionStorage.getItem("send_pass");
+    if(pass){ fetch("/api/pl",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify({eventId:openId,name:pl.name,email:pl.email})}).catch(()=>{}); }
+    openModal(openId);
+  }
 }
 function saveConf(v){store.set("conf:"+openId,v);document.getElementById("plchk").classList.toggle("on",v);document.getElementById("plchk").childNodes[1].textContent=v?"On it ✓":"PL is on it";}
 function editMail(key){
@@ -492,91 +497,63 @@ function copyMail(key){
   const s=document.getElementById("subj:"+key).value, b=document.getElementById("body:"+key).value;
   navigator.clipboard.writeText("Subject: "+s+"\n\n"+b).then(()=>toast("Email copied to clipboard."));
 }
-function openMailApp(key){
-  const e=EVENTS.find(x=>x.id===openId);const pl=getPL(openId);
-  const s=document.getElementById("subj:"+key).value, b=document.getElementById("body:"+key).value;
-  window.location.href=`mailto:${encodeURIComponent(pl.email)}?subject=${encodeURIComponent(s)}&body=${encodeURIComponent(b)}`;
+/* Snapshot captured at approval time — exactly what the daily job will send. */
+function buildJob(e,r){
+  const sEl=document.getElementById("subj:"+r.key), bEl=document.getElementById("body:"+r.key);
+  const subject=sEl?sEl.value:getEmail(e,r).subject;
+  const body=bEl?bEl.value:getEmail(e,r).body;
+  const job={eventId:e.id,key:r.key,kind:r.kind,label:e.label,sendOn:isoDate(r.date),subject,body,replyTo:REPLY_TO};
+  if(r.kind==="pl") job.plEmail=getPL(e.id).email;
+  return job;
 }
-/* Pull attendee emails for a location straight from the RSVP page so the
-   list is always current. Excludes cross-location test emails and dedupes. */
-let _rsvpCache=null;
-async function loadRsvps(){
-  if(_rsvpCache) return _rsvpCache;
-  const html=await fetch("./index.html",{cache:"no-store"}).then(r=>r.text());
-  const i=html.indexOf("const INITIAL_DATA = ");
-  const s=html.indexOf("[",i), e=html.indexOf("];",s);
-  _rsvpCache=JSON.parse(html.slice(s,e+1));
-  return _rsvpCache;
-}
-async function attendeesFor(label){
-  const arr=await loadRsvps();
-  const states={};
-  arr.forEach(r=>{const em=(r.email||"").toLowerCase();if(!em)return;(states[em]=states[em]||new Set()).add(r.state);});
-  const test=new Set(Object.keys(states).filter(k=>states[k].size>=3));
-  const seen=new Set(), out=[];
-  arr.forEach(r=>{const em=(r.email||"").trim(), el=em.toLowerCase();
-    if(r.location===label && el.includes("@") && !test.has(el) && !seen.has(el)){seen.add(el);out.push(em);}});
-  return out;
+async function scheduleAction(id,action,job){
+  const pass=getSendPass(); if(!pass){ toast("Passcode needed."); return false; }
+  try{
+    const res=await fetch("/api/schedule",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify({id,action,job})});
+    const j=await res.json().catch(()=>({}));
+    if(res.ok){
+      if(action==="remove") delete SERVER_JOBS[id];
+      else SERVER_JOBS[id]={status:j.status,sentAt:null,sendOn:job?job.sendOn:(SERVER_JOBS[id]&&SERVER_JOBS[id].sendOn)};
+      return true;
+    }
+    if(res.status===401){ sessionStorage.removeItem("send_pass"); toast("Incorrect passcode — try again."); }
+    else if(res.status===501){ toast("Server not fully configured: "+(j.error||"")); }
+    else toast("Couldn't save: "+(j.error||("HTTP "+res.status)));
+  }catch(err){ toast("Couldn't reach the server ("+err.message+")."); }
+  return false;
 }
 function getSendPass(){
   let p=sessionStorage.getItem("send_pass");
   if(!p){ p=(prompt("Enter the send passcode (set as SEND_PASSCODE in Vercel):")||"").trim(); if(p) sessionStorage.setItem("send_pass",p); }
   return p;
 }
-async function send(key,kind){
-  const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
-  const subject=document.getElementById("subj:"+key).value, text=document.getElementById("body:"+key).value;
-  const pl=getPL(openId);
-  const payload={subject,text,replyTo:REPLY_TO};
-  let recipDesc;
-  if(kind==="pl"){
-    if(!pl.email){ toast("Add the PL's email above first."); return; }
-    payload.to=[pl.email]; recipDesc=pl.email;
-  }else{
-    toast("Gathering the attendee list…");
-    let list; try{ list=await attendeesFor(e.label); }catch(err){ toast("Couldn't load the attendee list."); return; }
-    if(!list.length){ toast("No attendee emails found for "+e.label+"."); return; }
-    payload.bcc=list; recipDesc=list.length+" attendees";
-  }
-  if(!confirm(`Send "${subject}"\n\nTo: ${recipDesc}${kind==="pl"?"":" ("+e.label+")"}\n\nThis sends immediately via Resend. Proceed?`)) return;
-  const pass=getSendPass(); if(!pass){ toast("Send cancelled — no passcode entered."); return; }
-  toast("Sending…");
-  try{
-    const res=await fetch("/api/send",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify(payload)});
-    const j=await res.json().catch(()=>({}));
-    if(res.ok){
-      setStatus(openId,key,"sent");openModal(openId);refreshAll();
-      toast(`✓ Sent to ${j.sent||recipDesc}.`);
-    }else if(res.status===401){
-      sessionStorage.removeItem("send_pass"); toast("Incorrect passcode — click Send now to try again.");
-    }else if(res.status===501){
-      toast("Resend isn't fully set up in Vercel yet: "+(j.error||"missing environment variables")+".");
-    }else{
-      toast("Send failed: "+(j.error||("HTTP "+res.status)));
-    }
-  }catch(err){ toast("Couldn't reach the server ("+err.message+")."); }
-}
-/* ===== approval workflow ===== */
-function approve(key){
+/* ===== approval workflow (server-backed; approve = auto-sends on its date) ===== */
+async function approve(key){
   const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
   if(r.kind==="pl" && !getPL(openId).email){ toast("Add the PL's email above before approving."); return; }
-  setStatus(openId,key,"approved");openModal(openId);refreshAll();
-  const due=dbetween(r.date,T0)<=0;
-  toast(due?"Approved &amp; due now — click Send now to deliver.":"Approved — open it on "+fmtShort(r.date)+" and click Send now.");
+  const ac=audienceCount(e.label);
+  const cnt=r.kind==="pl"?1:(ac!=null?ac:e.rsvps);
+  const who=r.kind==="pl"?getPL(openId).email:(cnt+" recipients ("+e.label+")");
+  const sub=document.getElementById("subj:"+key).value;
+  if(!confirm(`Approve & schedule this email?\n\n"${sub}"\n\nIt will send AUTOMATICALLY on ${fmtShort(r.date)} to ${who}. No further action needed.`)) return;
+  toast("Scheduling…");
+  if(await scheduleAction(openId+":"+key,"approve",buildJob(e,r))){
+    openModal(openId); refreshAll();
+    const due=dbetween(r.date,T0)<=0;
+    toast(due?"Scheduled ✓ — due now; the daily job sends it each morning.":"Scheduled ✓ — auto-sends "+fmtShort(r.date)+".");
+  }
 }
-function revoke(key){setStatus(openId,key,"draft");openModal(openId);refreshAll();}
-function skip(key){setStatus(openId,key,"skipped");openModal(openId);refreshAll();}
-function restore(key){setStatus(openId,key,"draft");openModal(openId);refreshAll();}
-/* ignore straight from a to-do row (no need to open the event) */
-function ignoreItem(id,key){
-  setStatus(id,key,"skipped");
-  refreshAll();
-  if(openId===id) openModal(id);
-  const e=EVENTS.find(x=>x.id===id);const r=reminders(e).find(x=>x.key===key);
-  toast(`Ignored — ${esc(e.city||e.state)} ${r.name} won't send. <a href="#" onclick="restoreItem('${id}','${key}');return false;">Undo</a>`);
+async function revoke(key){ if(await scheduleAction(openId+":"+key,"remove")){ openModal(openId); refreshAll(); toast("Reverted to Not scheduled."); } }
+async function skip(key){ if(await scheduleAction(openId+":"+key,"skip")){ openModal(openId); refreshAll(); } }
+async function restore(key){ if(await scheduleAction(openId+":"+key,"remove")){ openModal(openId); refreshAll(); } }
+async function ignoreItem(id,key){
+  if(await scheduleAction(id+":"+key,"skip")){
+    refreshAll(); if(openId===id) openModal(id);
+    const e=EVENTS.find(x=>x.id===id);const r=reminders(e).find(x=>x.key===key);
+    toast(`Ignored — ${esc(e.city||e.state)} ${r.name} won't send. <a href="#" onclick="restoreItem('${id}','${key}');return false;">Undo</a>`);
+  }
 }
-function restoreItem(id,key){setStatus(id,key,"draft");refreshAll();if(openId===id)openModal(id);document.getElementById("toast").classList.remove("show");}
-function markUnsent(key){setStatus(openId,key,"approved");openModal(openId);refreshAll();}
+async function restoreItem(id,key){ if(await scheduleAction(id+":"+key,"remove")){ refreshAll(); if(openId===id)openModal(id); document.getElementById("toast").classList.remove("show"); } }
 
 /* ===== To-Do: what sends today, and what's coming this week ===== */
 function todoTag(status){
@@ -719,7 +696,7 @@ function uploadList(eventId){
 /* init */
 renderCal();
 refreshAll();
-loadAudiences().then(()=>{ if(openId) openModal(openId); });
+Promise.all([loadPLs(),loadSchedule(),loadAudiences()]).then(()=>{ refreshAll(); if(openId) openModal(openId); });
 </script>
 </body>
 </html>
