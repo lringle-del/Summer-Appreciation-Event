@@ -261,7 +261,7 @@ const REPLY_TO = "events@abtaba.com";  // replies land in this real inbox (send 
 const EVENTS = [
   {id:"co", state:"Colorado", city:"Centennial", label:"Colorado", venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"", date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null, notes:""},
   {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"8400 N Oklahoma Ave, Oklahoma City, OK 73114", url:"https://chickennpickle.com/location/oklahoma-city/", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
-  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"The Zinc House", address:"", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, notes:""},
+  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"ZincHouse Winery & Brewery", address:"6225 Wake Forest Hwy, Durham, NC 27703", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, notes:""},
   {id:"tulsa", state:"Oklahoma", city:"Tulsa", label:"Tulsa, OK", venue:"Courts & Commons", address:"7921 E 119th Dr, Bixby, OK 74008", url:"", date:"2026-08-06", time:"7:00–9:00 PM", est:75, rsvps:34, budget:null, perPerson:null, notes:""},
   {id:"omaha", state:"Nebraska", city:"Omaha", label:"Nebraska", venue:"Backlot Pizza & Kitchen (Elkhorn)", address:"6200 South 205th Plaza, Omaha, NE 68022", url:"https://www.backlotpizzaandkitchen.com/location/backlot-pizza-elkhorn/", date:"2026-08-10", time:"TBD", est:500, rsvps:197, budget:20000, perPerson:40, notes:"Dinner at Backlot Pizza, then a movie at ACX Cinemas.", blurb:"Stick around after dinner — we've got a movie at ACX Cinemas!"},
   {id:"atlanta", state:"Georgia", city:"Atlanta (Sandy Springs)", label:"Atlanta, GA", venue:"Hudson Grille", address:"6317 Roswell Rd, Sandy Springs, GA 30328", url:"https://hudsongrille.com/", date:"2026-08-10", time:"5:30–9:00 PM", est:250, rsvps:117, budget:10000, perPerson:40, notes:"Venue phone: (404) 554-8282"},
@@ -301,10 +301,12 @@ function reminders(e){
   ].map(r=>({...r, date:addDays(d,r.off)}));
 }
 /* server-backed state (approvals + PLs live in the private Blob store) */
-let SERVER_JOBS={}, SERVER_PLS={};
+let SERVER_JOBS={}, SERVER_PLS={}, SERVER_DIRECTORS={};
 async function loadSchedule(){ try{ const r=await fetch("/api/schedule",{cache:"no-store"}); if(r.ok){ SERVER_JOBS=(await r.json()).jobs||{}; } }catch{} }
 async function loadPLs(){ try{ const r=await fetch("/api/pl",{cache:"no-store"}); if(r.ok){ SERVER_PLS=(await r.json()).pls||{}; } }catch{} }
+async function loadDirectors(){ try{ const r=await fetch("/api/director",{cache:"no-store"}); if(r.ok){ SERVER_DIRECTORS=(await r.json()).directors||{}; } }catch{} }
 function getPL(id){ if(SERVER_PLS[id]&&SERVER_PLS[id].email) return SERVER_PLS[id]; return store.get("pl:"+id,{name:"",email:""}); }
+function getDirector(id){ return SERVER_DIRECTORS[id]||""; }
 /* per-email status comes from the server job: draft -> approved -> sent (or skipped) */
 function getStatus(id,key){ const j=SERVER_JOBS[id+":"+key]; if(!j) return "draft"; return j.sentAt?"sent":j.status; }
 function isoDate(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
@@ -400,7 +402,8 @@ function openModal(id){
     const m=getEmail(e,r);const status=getStatus(id,r.key);const st=statusPill(status,r.date);
     const due=dbetween(r.date,T0)<=0;
     const _ac=audienceCount(e.label);
-    const toDetail = r.kind==="pl" ? (pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>') : (_ac!=null?(_ac+" on uploaded list"):(e.rsvps+" (RSVP list — no upload yet)"));
+    const _dir=getDirector(e.id);
+    const toDetail = r.kind==="pl" ? ((pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>')+(_dir?(" · cc "+esc(_dir)):"")) : (_ac!=null?(_ac+" on uploaded list"):(e.rsvps+" (RSVP list — no upload yet)"));
     let controls;
     if(status==="draft"){
       controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve &amp; schedule</button>
@@ -498,7 +501,7 @@ function buildJob(e,r){
   const subject=sEl?sEl.value:getEmail(e,r).subject;
   const body=bEl?bEl.value:getEmail(e,r).body;
   const job={eventId:e.id,key:r.key,kind:r.kind,label:e.label,sendOn:isoDate(r.date),subject,body,replyTo:REPLY_TO};
-  if(r.kind==="pl") job.plEmail=getPL(e.id).email;
+  if(r.kind==="pl"){ job.plEmail=getPL(e.id).email; const dir=getDirector(e.id); if(dir) job.cc=[dir]; }
   return job;
 }
 async function scheduleAction(id,action,job){
@@ -691,7 +694,7 @@ function uploadList(eventId){
 /* init */
 renderCal();
 refreshAll();
-Promise.all([loadPLs(),loadSchedule(),loadAudiences()]).then(()=>{ refreshAll(); if(openId) openModal(openId); });
+Promise.all([loadPLs(),loadDirectors(),loadSchedule(),loadAudiences()]).then(()=>{ refreshAll(); if(openId) openModal(openId); });
 </script>
 </body>
 </html>
