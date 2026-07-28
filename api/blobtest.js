@@ -2,7 +2,7 @@ import { put, list, head } from '@vercel/blob';
 
 // TEMPORARY diagnostic — verifies the private-store read/write pattern.
 export default async function handler(req, res) {
-  const out = {};
+  const out = { marker: 'v3' };
   try {
     const p = await put('blobtest.json', JSON.stringify({ t: Date.now(), msg: 'hi' }), {
       access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json',
