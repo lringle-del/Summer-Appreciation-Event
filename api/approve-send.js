@@ -28,18 +28,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     job.okToSend = true;
-    let note = 'Approved. It will send on <b>' + esc(job.sendOn) + '</b>.';
-    const today = new Date().toISOString().slice(0, 10);
-    if (job.sendOn <= today) {
-      try {
-        const dirs = await readJSON(DKEY, {});
-        const r = await sendJob(job, { directors: dirs, audiences: auds });
-        job.sentAt = new Date().toISOString(); job.sentCount = r.sent;
-        note = 'Sent now to <b>' + r.sent + '</b> recipient(s). ✅';
-      } catch (e) { note = 'Approved, but sending failed: ' + esc(e.message) + '. It will retry on the next run.'; }
-    }
     all[id] = job; await writeJSON(SKEY, all);
-    return res.status(200).send(page('Approved ✓', note + '<br><br>You can close this page.'));
+    return res.status(200).send(page('Approved ✓', 'This reminder is now <b>scheduled</b> and will send on <b>' + esc(job.sendOn) + '</b> to ' + esc(who) + '. Nothing goes out before then. You can close this page.'));
   }
 
   // GET -> confirmation page
