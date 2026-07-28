@@ -267,7 +267,7 @@ const EVENTS = [
   {id:"atlanta", state:"Georgia", city:"Atlanta (Sandy Springs)", label:"Atlanta, GA", venue:"Hudson Grille", address:"6317 Roswell Rd, Sandy Springs, GA 30328", url:"https://hudsongrille.com/", date:"2026-08-10", time:"5:30–9:00 PM", est:250, rsvps:117, budget:10000, perPerson:40, notes:"Venue phone: (404) 554-8282"},
   {id:"slc", state:"Utah", city:"Salt Lake City", label:"Utah", venue:"Red Iguana 2", address:"866 W South Temple, Salt Lake City, UT 84116", url:"", date:"2026-08-18", time:"6:30–8:30 PM", est:40, rsvps:12, budget:1200, perPerson:30, notes:"Date moved from the 19th to the 18th."},
   {id:"ncharlotte", state:"North Carolina", city:"North Charlotte", label:"North Charlotte, NC", venue:"VBGB Beer Hall & Gardens", address:"920 Hamilton St, Charlotte, NC 28206", url:"https://vbgbuptown.com/", date:"2026-08-19", time:"6:30–9:30 PM", est:175, rsvps:90, budget:14000, perPerson:80, notes:""},
-  {id:"va", state:"Virginia", city:"", label:"Virginia", venue:"Topgolf Loudoun", address:"20356 Commonwealth Center Dr, Ashburn, VA 20147", url:"https://topgolf.com/us/loudoun/", date:"2026-08-20", time:"5:00–7:00 PM", est:60, rsvps:9, budget:1947, perPerson:null, notes:""},
+  {id:"va", state:"Virginia", city:"", label:"Virginia", venue:"Topgolf Loudoun", address:"20356 Commonwealth Center Dr, Ashburn, VA 20147", url:"https://topgolf.com/us/loudoun/", date:"2026-08-20", time:"5:00–7:00 PM", est:60, rsvps:9, budget:1947, perPerson:null, extras:[{key:"early", date:"2026-08-09", abbr:"Aug 9", name:"Save-the-date reminder"}], notes:""},
   {id:"indiana", state:"Indiana", city:"Indianapolis", label:"Indiana", venue:"Pins Mechanical Co.", address:"856 Carrollton Ave, Indianapolis, IN 46202", url:"https://www.pinsbar.com/locations/indianapolis", date:"2026-09-09", time:"6:30 PM", est:100, rsvps:19, budget:3000, perPerson:null, notes:""},
 ];
 const DEFAULT_TASKS = [
@@ -293,12 +293,15 @@ const T0=today0();
 /* reminder definitions per event */
 function reminders(e){
   const d=ymd(e.date);
-  return [
+  const base=[
     {kind:"pl",  key:"pl7",  off:-7, abbr:"PL · 1wk",  name:"PL task reminder",   toLabel:()=>{const pl=getPL(e.id);return pl.email?(pl.name||pl.email):"PL (unassigned)";}},
     {kind:"att", key:"att3", off:-3, abbr:"−3 days",   name:"Attendee reminder #1", toLabel:()=>e.rsvps+" attendees"},
     {kind:"att", key:"att2", off:-2, abbr:"−2 days",   name:"Attendee reminder #2", toLabel:()=>e.rsvps+" attendees"},
     {kind:"att", key:"att0", off:0,  abbr:"Day-of",    name:"Day-of reminder",      toLabel:()=>e.rsvps+" attendees"},
   ].map(r=>({...r, date:addDays(d,r.off)}));
+  if(e.extras) e.extras.forEach(x=>{ const xd=ymd(x.date); base.push({kind:"att", key:x.key, off:dbetween(xd,d), abbr:x.abbr||"Extra", name:x.name||"Reminder", extra:true, date:xd, toLabel:()=>e.rsvps+" attendees"}); });
+  base.sort((a,b)=>a.date-b.date);
+  return base;
 }
 /* server-backed state (approvals + PLs live in the private Blob store) */
 let SERVER_JOBS={}, SERVER_PLS={}, SERVER_DIRECTORS={};
@@ -321,27 +324,35 @@ function statusPill(status,rd){
 /* ===== email templates ===== */
 function tasksFor(id){return DEFAULT_TASKS;}
 function template(e,r){
-  const d=ymd(e.date), long=fmtLong(d);
+  const d=ymd(e.date), long=fmtLong(d), sd=fmtShort(d);
+  const place=e.city||e.state;
   const where=e.venue+(e.address?", "+e.address:"");
   const link=e.url?("\n🔗 "+e.url):"";
   const blurb=e.blurb?("\n"+e.blurb+"\n"):"";
+  const details=`📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}`;
   if(r.kind==="pl"){
     const pl=getPL(e.id);
     return {
-      subject:`PL checklist — ${e.city||e.state} 🎉`,
-      body:`Hi ${pl.name||"there"},\n\nYou're the Party Lead for the ${e.city||e.state} Summer Appreciation Event — one week away! 🎉\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location.\n\nThank you so much for helping make this celebration happen — reach out anytime with questions!\n${ORGANIZER}`
+      subject:`${place} Summer Appreciation Event — PL details (${sd})`,
+      body:`Hi ${pl.name||"there"},\n\nThank you for serving as Party Lead for the ${place} Summer Appreciation Event — one week from today. We're very excited to celebrate your team's hard work.\n\n${details}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location. Please don't hesitate to reach out with any questions.\n\nWarm regards,\n${ORGANIZER}`
+    };
+  }
+  if(r.extra){
+    return {
+      subject:`Save the date: ${place} Summer Appreciation Event — ${sd}`,
+      body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event. Please note the event date below:\n\n${details}\n${blurb}\nWe'll follow up with additional reminders as the date approaches. We look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   if(r.off===0){
     return {
-      subject:`🎉 Today's the day!`,
-      body:`Hi there!\n\nToday's the day! 🎉 We are so happy and excited to celebrate YOU and all your hard work tonight at the Above & Beyond ABA Summer Appreciation Event!\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nCome ready to relax and have fun — you've earned it! See you there! 🎉\n— The ${FROM_NAME} Team`
+      subject:`Today: ${place} Summer Appreciation Event`,
+      body:`Hi there,\n\nToday's the day. We're looking forward to celebrating you and all your hard work this evening at the Above & Beyond ABA Summer Appreciation Event.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nWe look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   const days=Math.abs(r.off);
   return {
-    subject: days===2 ? `🎉 2 days to go!` : `🎉 See you soon!`,
-    body:`Hi there!\n\nWe are so happy and excited to celebrate YOU and all your hard work at the Above & Beyond ABA Summer Appreciation Event! 🎉\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nCome hungry and ready to have fun — you've earned it! Please arrive a few minutes early, and reply if your plans change so we can update the headcount.\n\nCan't wait to celebrate with you! 🎉\n— The ${FROM_NAME} Team`
+    subject:`${days===2?"2 days — ":""}${place} Summer Appreciation Event — ${sd}`,
+    body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event, and we hope you'll join us.\n\n${details}\n${blurb}\nPlease plan to arrive a few minutes early. If your plans have changed, kindly reply so we can update our headcount.\n\nWe look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
   };
 }
 function getEmail(e,r){
@@ -383,7 +394,7 @@ function renderCal(){
       if(st==="skipped") return "";
       const cls=st==="approved"?"s-sched":st==="sent"?"s-sent":"s-needs";
       const word=cls==="s-needs"?"not approved":cls==="s-sched"?"scheduled":"sent";
-      return `<button class="rem-chip ${cls}" onclick="openModal('${x.e.id}')" title="${esc(x.e.city||x.e.state)} — ${x.r.name} (${word})">${esc(shortCity(x.e))} ${CAL_ABBR[x.r.key]}</button>`;
+      return `<button class="rem-chip ${cls}" onclick="openModal('${x.e.id}')" title="${esc(x.e.city||x.e.state)} — ${x.r.name} (${word})">${esc(shortCity(x.e))} ${CAL_ABBR[x.r.key]||x.r.abbr||""}</button>`;
     }).join("");
     html+=`<div class="cell ${out?'out':''} ${isToday?'today':''}"><div class="dnum">${dt.getDate()}</div>${evHtml}${remHtml}</div>`;
   }
