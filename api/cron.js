@@ -3,6 +3,7 @@ import { readJSON, writeJSON } from '../lib/blobstore.js';
 
 const SKEY = 'schedule.json';
 const AKEY = 'audiences.json';
+const DKEY = 'directors.json';
 const DIGEST_TO = 'lringle@abtaba.com';
 const chunk = (a, n) => { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
 
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
 
   const sched = await readJSON(SKEY, {});
   const auds = await readJSON(AKEY, {});
+  const directors = await readJSON(DKEY, {});
   const today = new Date().toISOString().slice(0, 10);
   const results = [];
 
@@ -44,8 +46,13 @@ export default async function handler(req, res) {
         if (r.error) throw new Error(r.error.message || 'Resend error');
         sent = recipients.length;
       } else {
-        for (const g of chunk(recipients, 45)) {
-          const r = await resend.emails.send({ from, to: [from], bcc: g, subject: j.subject, text: j.body, replyTo: j.replyTo });
+        // 3-day and day-of also BCC the state director (one copy, on the first batch)
+        const dir = (j.key === 'att3' || j.key === 'att0') ? (directors[j.eventId] || '') : '';
+        const groups = chunk(recipients, 45);
+        for (let gi = 0; gi < groups.length; gi++) {
+          const g = groups[gi];
+          const bcc = (gi === 0 && dir) ? g.concat([dir]) : g;
+          const r = await resend.emails.send({ from, to: [from], bcc, subject: j.subject, text: j.body, replyTo: j.replyTo });
           if (r.error) throw new Error(r.error.message || 'Resend error');
           sent += g.length;
         }

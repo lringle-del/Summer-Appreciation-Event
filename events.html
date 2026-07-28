@@ -422,7 +422,8 @@ function openModal(id){
     const due=dbetween(r.date,T0)<=0;
     const _ac=audienceCount(e.label);
     const _dir=getDirector(e.id);
-    const toDetail = r.kind==="pl" ? ((pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>')+(_dir?(" · bcc "+esc(_dir)):"")) : (_ac!=null?(_ac+" on uploaded list"):(e.rsvps+" (RSVP list — no upload yet)"));
+    const _attDirBcc=(r.key==="att3"||r.key==="att0")&&_dir?(" · bcc "+esc(_dir)):"";
+    const toDetail = r.kind==="pl" ? ((pl.email?esc(pl.email):'<span style="color:var(--amber)">assign a PL email above</span>')+(_dir?(" · bcc "+esc(_dir)):"")) : ((_ac!=null?(_ac+" on uploaded list"):(e.rsvps+" (RSVP list — no upload yet)"))+_attDirBcc);
     let controls;
     if(status==="draft"){
       controls=`<button class="btn primary" onclick="approve('${r.key}')">✓ Approve &amp; schedule</button>
@@ -521,6 +522,7 @@ function buildJob(e,r){
   const body=bEl?bEl.value:getEmail(e,r).body;
   const job={eventId:e.id,key:r.key,kind:r.kind,label:e.label,sendOn:isoDate(r.date),subject,body,replyTo:REPLY_TO};
   if(r.kind==="pl"){ job.plEmail=getPL(e.id).email; const dir=getDirector(e.id); if(dir) job.bcc=[dir]; }
+  if(r.kind==="att" && (r.key==="att3"||r.key==="att0")){ const dir=getDirector(e.id); if(dir) job.dirBcc=[dir]; }
   return job;
 }
 async function scheduleAction(id,action,job){
