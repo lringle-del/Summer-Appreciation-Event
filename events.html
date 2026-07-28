@@ -271,13 +271,8 @@ const EVENTS = [
   {id:"indiana", state:"Indiana", city:"TBD", label:"Indiana", venue:"Pins Bar", address:"", url:"https://www.pinsbar.com/", date:"2026-09-09", time:"6:30 PM", est:100, rsvps:19, budget:3000, perPerson:null, notes:""},
 ];
 const DEFAULT_TASKS = [
-  "Confirm final headcount with the venue",
-  "Confirm menu & dietary restrictions",
-  "Confirm budget and payment method",
-  "Arrange décor / signage / name tags",
-  "Confirm activities, A/V, or movie tickets (if applicable)",
-  "Share parking & arrival details with attendees",
-  "Assign a day-of on-site point of contact",
+  "Arrive early to set up the gifts",
+  "Be there for the event to help everything run smoothly",
 ];
 
 const store={get(k,d){try{const v=localStorage.getItem("evt:"+k);return v==null?d:JSON.parse(v);}catch{return d;}},set(k,v){try{localStorage.setItem("evt:"+k,JSON.stringify(v));}catch{}}};
@@ -330,7 +325,7 @@ function template(e,r){
     const pl=getPL(e.id);
     return {
       subject:`[Action needed] ${e.city||e.state} event is 1 week out — your checklist`,
-      body:`Hi ${pl.name||"there"},\n\nThe ${e.city||e.state} Summer Appreciation Event is one week away:\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}\n\nPlease make sure these are handled before the day:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} RSVPs for your location. Let me know if you need anything from me.\n\nThank you!\n${ORGANIZER}`
+      body:`Hi ${pl.name||"there"},\n\nYou're the Party Lead for the ${e.city||e.state} Summer Appreciation Event — one week away:\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location.\n\nIf you have any questions, just reach out to me anytime.\n\nThank you so much!\n${ORGANIZER}`
     };
   }
   if(r.off===0){
