@@ -346,8 +346,8 @@ function template(e,r){
   }
   if(r.off===0){
     return {
-      subject:`Today: ${place} Summer Appreciation Event`,
-      body:`Hi there,\n\nToday's the day. We're looking forward to celebrating you and all your hard work this evening at the Above & Beyond ABA Summer Appreciation Event.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nWe look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
+      subject:`Today! See you at ${e.venue} — ${e.time}`,
+      body:`Hi there,\n\nToday's the day! We're looking forward to celebrating you and all your hard work this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nSee you there!\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   const days=Math.abs(r.off);
