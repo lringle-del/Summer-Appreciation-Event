@@ -219,7 +219,7 @@
 <div class="wrap">
   <div class="banner" id="connBanner">
     <div>✅</div>
-    <div><b>Approve once — it sends itself.</b> Each email starts as <b>Needs approval</b>. When you review and click <b>Approve &amp; schedule</b>, it turns green and <b>sends automatically on its date</b> — no “send now,” nothing else to do. Emails you don't approve never send. A daily job (each morning) does the sending and emails you a short digest of what went out.</div>
+    <div><b>Two gates, so nothing goes out by surprise.</b> Approve an email here to <b>schedule</b> it (turns green). Then the <b>day before</b> its send date you'll get a <b>preview email</b> — approve that (one tap, or reply) and it goes to the real list the next day. Anything you don't approve never sends.</div>
   </div>
 
   <div id="alertBar"></div>
@@ -434,7 +434,7 @@ function openModal(id){
     }else if(status==="approved"){
       controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <button class="lnk" onclick="revoke('${r.key}')">Revoke</button>
-        <span class="foot-note">${due?"✓ Scheduled &amp; due — the daily job sends it (runs each morning)":"✓ Scheduled — auto-sends "+fmtShort(r.date)+", no action needed"}</span>`;
+        <span class="foot-note">✓ Scheduled — you'll get a preview to approve the day before it sends (${fmtShort(r.date)})</span>`;
     }else if(status==="sent"){
       controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <span class="foot-note">✓ Sent</span>`;
@@ -558,8 +558,7 @@ async function approve(key){
   toast("Scheduling…");
   if(await scheduleAction(openId+":"+key,"approve",buildJob(e,r))){
     openModal(openId); refreshAll();
-    const due=dbetween(r.date,T0)<=0;
-    toast(due?"Scheduled ✓ — due now; the daily job sends it each morning.":"Scheduled ✓ — auto-sends "+fmtShort(r.date)+".");
+    toast("Scheduled ✓ — you'll get a preview to approve the day before it sends ("+fmtShort(r.date)+").");
   }
 }
 async function revoke(key){ if(await scheduleAction(openId+":"+key,"remove")){ openModal(openId); refreshAll(); toast("Reverted to Not scheduled."); } }

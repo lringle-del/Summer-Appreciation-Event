@@ -1,17 +1,17 @@
 import { Resend } from 'resend';
 import { readJSON, writeJSON } from '../lib/blobstore.js';
+import { sendJob, tokenFor } from '../lib/sendJob.js';
 
-const SKEY = 'schedule.json';
-const AKEY = 'audiences.json';
-const DKEY = 'directors.json';
+const SKEY = 'schedule.json', AKEY = 'audiences.json', DKEY = 'directors.json';
 const DIGEST_TO = 'lringle@abtaba.com';
-const chunk = (a, n) => { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
+const dayBefore = (iso) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
 
 /**
- * Daily job (Vercel Cron -> vercel.json). Sends every APPROVED reminder whose
- * sendOn date is today or earlier and hasn't been sent yet. Marks each sent
- * immediately (idempotent). Add ?dryRun=1 to preview without sending.
- * Auth: Authorization: Bearer <CRON_SECRET>  OR  x-send-passcode header.
+ * Daily job (Vercel Cron, 13:00 UTC). Two phases per approved job:
+ *   1) The day BEFORE its send date, email Liba a PREVIEW with an Approve button
+ *      (and, once inbound is set up, reply-to-approve). Nothing goes to recipients.
+ *   2) On/after the send date, IF she approved (okToSend), send to the real list.
+ * Auth: Authorization: Bearer <CRON_SECRET>  OR  x-send-passcode header. ?dryRun=1 previews.
  */
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET, pass = process.env.SEND_PASSCODE;
@@ -21,61 +21,62 @@ export default async function handler(req, res) {
 
   const dry = (req.query && ('dryRun' in req.query)) || req.headers['x-dry-run'] === '1';
   const apiKey = process.env.RESEND_API_KEY, from = process.env.RESEND_FROM;
-  if (!apiKey || !from) return res.status(501).json({ error: 'Resend not configured (RESEND_API_KEY / RESEND_FROM).' });
+  if (!apiKey || !from) return res.status(501).json({ error: 'Resend not configured.' });
   const resend = new Resend(apiKey);
+  const origin = 'https://' + req.headers.host;
 
   const sched = await readJSON(SKEY, {});
   const auds = await readJSON(AKEY, {});
-  const directors = await readJSON(DKEY, {});
+  const dirs = await readJSON(DKEY, {});
   const today = new Date().toISOString().slice(0, 10);
-  const results = [];
+  const previews = [], sends = [];
 
   for (const id in sched) {
     const j = sched[id];
-    if (!j || j.status !== 'approved' || j.sentAt) continue;
-    if (!j.sendOn || j.sendOn > today) continue;
+    if (!j || j.status !== 'approved' || j.sentAt || !j.sendOn) continue;
 
-    const recipients = j.kind === 'pl' ? (j.plEmail ? [j.plEmail] : []) : (auds[j.label] || []);
-    if (!recipients.length) { results.push({ id, skipped: 'no recipients' }); continue; }
-    if (dry) { results.push({ id, wouldSend: recipients.length, to: j.kind === 'pl' ? j.plEmail : j.label, on: j.sendOn }); continue; }
+    // Phase 1 — day-before preview (once), only if not yet approved
+    if (!j.okToSend && !j.previewSentAt && today >= dayBefore(j.sendOn)) {
+      const count = j.kind === 'pl' ? 1 : ((auds[j.label] || []).length);
+      const who = j.kind === 'pl' ? (j.plEmail || '(no PL email)') : (count + ' attendees (' + j.label + ')');
+      const link = origin + '/api/approve-send?id=' + encodeURIComponent(id) + '&t=' + tokenFor(id);
+      if (dry) { previews.push({ id, to: who, sendOn: j.sendOn }); continue; }
+      try {
+        await resend.emails.send({
+          from, to: [DIGEST_TO],
+          subject: `Approve to send — ${j.subject}  (sends ${j.sendOn})`,
+          text: `This reminder is scheduled to send on ${j.sendOn} to ${who}.\n\n`
+            + `Review it below, then APPROVE to release it:\n${link}\n\n`
+            + `(You can also reply "approve" to this email once reply-approval is enabled.)\n\n`
+            + `If you do nothing, it will NOT send.\n\n`
+            + `----- EMAIL PREVIEW -----\nSubject: ${j.subject}\n\n${j.body}`,
+        });
+        j.previewSentAt = new Date().toISOString(); sched[id] = j; await writeJSON(SKEY, sched);
+        previews.push({ id, to: who, sendOn: j.sendOn });
+      } catch (e) { previews.push({ id, error: e.message }); }
+      continue;
+    }
 
-    try {
-      let sent = 0;
-      if (j.kind === 'pl') {
-        const r = await resend.emails.send({ from, to: recipients, bcc: (j.bcc && j.bcc.length) ? j.bcc : undefined, subject: j.subject, text: j.body, replyTo: j.replyTo });
-        if (r.error) throw new Error(r.error.message || 'Resend error');
-        sent = recipients.length;
-      } else {
-        // 3-day and day-of also BCC the state director (one copy, on the first batch)
-        const dir = (j.key === 'att3' || j.key === 'att0') ? (directors[j.eventId] || '') : '';
-        const groups = chunk(recipients, 45);
-        for (let gi = 0; gi < groups.length; gi++) {
-          const g = groups[gi];
-          const bcc = (gi === 0 && dir) ? g.concat([dir]) : g;
-          const r = await resend.emails.send({ from, to: [from], bcc, subject: j.subject, text: j.body, replyTo: j.replyTo });
-          if (r.error) throw new Error(r.error.message || 'Resend error');
-          sent += g.length;
-        }
-      }
-      j.sentAt = new Date().toISOString(); j.sentCount = sent; sched[id] = j;
-      await writeJSON(SKEY, sched); // persist after each send so a crash never double-sends
-      results.push({ id, sent });
-    } catch (e) {
-      results.push({ id, error: e.message });
+    // Phase 2 — send for real once approved and due
+    if (j.okToSend && today >= j.sendOn) {
+      if (dry) { sends.push({ id, wouldSend: j.kind === 'pl' ? 1 : (auds[j.label] || []).length }); continue; }
+      try {
+        const r = await sendJob(j, { directors: dirs, audiences: auds });
+        j.sentAt = new Date().toISOString(); j.sentCount = r.sent; sched[id] = j; await writeJSON(SKEY, sched);
+        sends.push({ id, sent: r.sent });
+      } catch (e) { sends.push({ id, error: e.message }); }
     }
   }
 
-  const sentItems = results.filter((r) => r.sent);
-  if (!dry && sentItems.length) {
+  if (!dry && sends.filter((s) => s.sent).length) {
     try {
       await resend.emails.send({
-        from, to: [DIGEST_TO],
-        subject: `Summer BBQ reminders sent — ${today}`,
-        text: 'The daily job sent these reminders today:\n\n' + sentItems.map((r) => `- ${r.id}: ${r.sent} recipient(s)`).join('\n') +
-          (results.some((r) => r.error) ? '\n\nErrors:\n' + results.filter((r) => r.error).map((r) => `- ${r.id}: ${r.error}`).join('\n') : ''),
+        from, to: [DIGEST_TO], subject: `Reminders sent — ${today}`,
+        text: 'Sent today:\n' + sends.filter((s) => s.sent).map((s) => `- ${s.id}: ${s.sent}`).join('\n')
+          + (sends.some((s) => s.error) ? '\n\nErrors:\n' + sends.filter((s) => s.error).map((s) => `- ${s.id}: ${s.error}`).join('\n') : ''),
       });
-    } catch { /* digest is best-effort */ }
+    } catch { /* best effort */ }
   }
 
-  return res.status(200).json({ ran: today, dryRun: dry, results });
+  return res.status(200).json({ ran: today, dryRun: dry, previews, sends });
 }
