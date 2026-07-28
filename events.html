@@ -323,24 +323,25 @@ function tasksFor(id){return DEFAULT_TASKS;}
 function template(e,r){
   const d=ymd(e.date), long=fmtLong(d);
   const where=e.venue+(e.address?", "+e.address:"");
+  const link=e.url?("\n🔗 "+e.url):"";
+  const blurb=e.blurb?("\n"+e.blurb+"\n"):"";
   if(r.kind==="pl"){
     const pl=getPL(e.id);
     return {
-      subject:`[Action needed] ${e.city||e.state} event is 1 week out — your checklist`,
-      body:`Hi ${pl.name||"there"},\n\nYou're the Party Lead for the ${e.city||e.state} Summer Appreciation Event — one week away:\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${e.url?("\n🔗 "+e.url):""}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location.\n\nIf you have any questions, just reach out to me anytime.\n\nThank you so much!\n${ORGANIZER}`
+      subject:`PL checklist — ${e.city||e.state} 🎉`,
+      body:`Hi ${pl.name||"there"},\n\nYou're the Party Lead for the ${e.city||e.state} Summer Appreciation Event — one week away! 🎉\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n\nA couple of things to take care of:\n- ${tasksFor(e.id).join("\n- ")}\n\nWe currently have ${e.rsvps} people RSVP'd for your location.\n\nThank you so much for helping make this celebration happen — reach out anytime with questions!\n${ORGANIZER}`
     };
   }
   if(r.off===0){
     return {
-      subject:`🎉 Today's the day — ${e.city||e.state} Summer Appreciation Event!`,
-      body:`Hi there,\n\nToday's the day! We can't wait to see you at the Above & Beyond ABA Summer Appreciation Event this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${e.url?("\n🔗 "+e.url):""}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nSee you there!\n— The ${FROM_NAME} Team`
+      subject:`🎉 Today's the day!`,
+      body:`Hi there!\n\nToday's the day! 🎉 We are so happy and excited to celebrate YOU and all your hard work tonight at the Above & Beyond ABA Summer Appreciation Event!\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nCome ready to relax and have fun — you've earned it! See you there! 🎉\n— The ${FROM_NAME} Team`
     };
   }
   const days=Math.abs(r.off);
-  const lead = days===3 ? "just a few days away" : "almost here — only 2 days to go";
   return {
-    subject:`${days===2?"2 days to go! ":""}See you at the ${e.city||e.state} Summer Appreciation Event 🎉`,
-    body:`Hi there,\n\nThe Above & Beyond ABA Summer Appreciation Event is ${lead}! We can't wait to celebrate with you.\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${e.url?("\n🔗 "+e.url):""}\n${e.blurb?("\n"+e.blurb+"\n"):""}\nPlease plan to arrive a few minutes early. If your plans have changed, reply to let us know so we can update the headcount.\n\nSee you there!\n— The ${FROM_NAME} Team`
+    subject: days===2 ? `🎉 2 days to go!` : `🎉 See you soon!`,
+    body:`Hi there!\n\nWe are so happy and excited to celebrate YOU and all your hard work at the Above & Beyond ABA Summer Appreciation Event! 🎉\n\n📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nCome hungry and ready to have fun — you've earned it! Please arrive a few minutes early, and reply if your plans change so we can update the headcount.\n\nCan't wait to celebrate with you! 🎉\n— The ${FROM_NAME} Team`
   };
 }
 function getEmail(e,r){
