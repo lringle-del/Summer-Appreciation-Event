@@ -41,7 +41,16 @@ export default async function handler(req, res) {
   if (!job) return res.status(200).json({ ignored: 'no such job' });
   if (job.sentAt) return res.status(200).json({ ok: true, note: 'already sent' });
 
-  job.okToSend = true; // schedule it — the daily job sends it on its date
+  job.okToSend = true; // schedule it; the daily job sends on its date
+  const today = new Date().toISOString().slice(0, 10);
+  let note = 'scheduled for ' + job.sendOn;
+  if (job.sendOn <= today) {
+    try {
+      const auds = await readJSON(AKEY, {}), dirs = await readJSON(DKEY, {});
+      const r = await sendJob(job, { directors: dirs, audiences: auds });
+      job.sentAt = new Date().toISOString(); job.sentCount = r.sent; note = 'sent now to ' + r.sent + ' recipient(s)';
+    } catch (e) { note = 'send failed: ' + e.message; }
+  }
   all[id] = job; await writeJSON(SKEY, all);
-  return res.status(200).json({ ok: true, id, note: 'scheduled for ' + job.sendOn });
+  return res.status(200).json({ ok: true, id, note });
 }
