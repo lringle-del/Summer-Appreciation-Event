@@ -5,6 +5,7 @@ import { sendJob, tokenFor } from '../lib/sendJob.js';
 const SKEY = 'schedule.json', AKEY = 'audiences.json', DKEY = 'directors.json';
 const DIGEST_TO = 'lringle@abtaba.com';
 const dayBefore = (iso) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+const escH = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 /**
  * Daily job (Vercel Cron, 13:00 UTC). Two phases per approved job:
@@ -47,9 +48,16 @@ export default async function handler(req, res) {
           subject: `Approve to send — ${j.subject}  (sends ${j.sendOn})`,
           text: `This reminder is scheduled to send on ${j.sendOn} to ${who}.\n\n`
             + `TO APPROVE, tap this link:\n${link}\n\n`
-            + `(Or open the event on the dashboard and tap “Approve & send.”)\n\n`
             + `If you do nothing, it will NOT send.\n\n`
             + `----- EMAIL PREVIEW -----\nSubject: ${j.subject}\n\n${j.body}`,
+          html: `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:580px;color:#1c458c">`
+            + `<p style="font-size:15px;color:#333">This reminder is scheduled to send on <b>${escH(j.sendOn)}</b> to <b>${escH(who)}</b>. Review it below, then approve to release it.</p>`
+            + `<p style="margin:22px 0"><a href="${link}" style="display:inline-block;background:#2f9e6f;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:17px">✅ Approve &amp; send</a></p>`
+            + `<p style="color:#888;font-size:13px">If you don't approve, this reminder will <b>not</b> be sent.</p>`
+            + `<hr style="border:none;border-top:1px solid #e3d6bd;margin:20px 0">`
+            + `<p style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#5f6b7a;font-weight:700">Preview</p>`
+            + `<p style="font-size:14px;color:#333"><b>Subject:</b> ${escH(j.subject)}</p>`
+            + `<pre style="white-space:pre-wrap;background:#f5f0e5;padding:14px;border-radius:10px;font-family:inherit;font-size:14px;color:#333">${escH(j.body)}</pre></div>`,
         });
         j.previewSentAt = new Date().toISOString(); sched[id] = j; await writeJSON(SKEY, sched);
         previews.push({ id, to: who, sendOn: j.sendOn });
