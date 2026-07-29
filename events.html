@@ -447,9 +447,11 @@ function openModal(id){
       const note = status==="confirmed"
         ? "✓ Approved — will send "+fmtShort(r.date)+"."
         : status==="preview"
-          ? "📨 Preview sent to you — reply “approve” (or tap the button in it) to confirm. It won't send until you do."
-          : "✓ Scheduled — you'll get a preview to approve the day before it sends ("+fmtShort(r.date)+").";
-      controls=`<button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
+          ? "📨 Preview sent to you. Approve it here, reply “approve”, or tap the button in the email."
+          : "✓ Scheduled — you'll get a preview to approve the day before ("+fmtShort(r.date)+"), or approve it here now.";
+      const approveBtn = status!=="confirmed" ? `<button class="btn primary" onclick="confirmSend('${r.key}')">✅ Approve &amp; send</button>` : "";
+      controls=`${approveBtn}
+        <button class="btn ghost" onclick="copyMail('${r.key}')">Copy</button>
         <button class="lnk" onclick="revoke('${r.key}')">Revoke</button>
         <span class="foot-note">${note}</span>`;
     }else if(status==="sent"){
@@ -577,6 +579,25 @@ async function approve(key){
     openModal(openId); refreshAll();
     toast("Scheduled ✓ — you'll get a preview to approve the day before it sends ("+fmtShort(r.date)+").");
   }
+}
+async function confirmSend(key){
+  const e=EVENTS.find(x=>x.id===openId);const r=reminders(e).find(x=>x.key===key);
+  const cnt = r.kind==="pl"?1:(audienceCount(e.label)!=null?audienceCount(e.label):e.rsvps);
+  const who = r.kind==="pl"?getPL(openId).email:(cnt+" recipients ("+e.label+")");
+  const dueNow = dbetween(r.date,T0)<=0;
+  if(!confirm(`Approve "${document.getElementById("subj:"+key).value}"\n\nTo: ${who}\n${dueNow?"It's due today — this will SEND now.":"It will send on "+fmtShort(r.date)+" (nothing goes out before then)."}\n\nProceed?`)) return;
+  const pass=getSendPass(); if(!pass){ toast("Passcode needed."); return; }
+  toast("Approving…");
+  try{
+    const res=await fetch("/api/schedule",{method:"POST",headers:{"content-type":"application/json","x-send-passcode":pass},body:JSON.stringify({id:openId+":"+key,action:"confirm"})});
+    const j=await res.json().catch(()=>({}));
+    if(res.ok){
+      const jb=SERVER_JOBS[openId+":"+key]||{}; jb.status="approved"; jb.okToSend=true; if(j.status==="sent") jb.sentAt=new Date().toISOString(); SERVER_JOBS[openId+":"+key]=jb;
+      openModal(openId); refreshAll();
+      toast(j.sentNow?("✓ Sent to "+who+"."):("✓ Approved — will send "+fmtShort(r.date)+"."));
+    }else if(res.status===401){ sessionStorage.removeItem("send_pass"); toast("Incorrect passcode — try again."); }
+    else{ toast("Couldn't approve: "+(j.error||("HTTP "+res.status))); }
+  }catch(err){ toast("Couldn't reach the server ("+err.message+")."); }
 }
 async function revoke(key){ if(await scheduleAction(openId+":"+key,"remove")){ openModal(openId); refreshAll(); toast("Reverted to Not scheduled."); } }
 async function skip(key){ if(await scheduleAction(openId+":"+key,"skip")){ openModal(openId); refreshAll(); } }

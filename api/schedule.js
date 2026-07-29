@@ -1,4 +1,5 @@
 import { readJSON, writeJSON } from '../lib/blobstore.js';
+import { sendJob } from '../lib/sendJob.js';
 
 const KEY = 'schedule.json';
 
@@ -35,6 +36,24 @@ export default async function handler(req, res) {
       const job = body.job;
       if (!job || !job.sendOn || !job.subject || !job.body || !job.kind) return res.status(400).json({ error: 'job requires kind, sendOn, subject, body.' });
       all[id] = { ...job, id, status: 'approved', sentAt: (all[id] && all[id].sentAt) || null };
+    } else if (action === 'confirm') {
+      // final approval (same as the preview's Approve button): release it; send now if already due
+      const job = all[id];
+      if (!job) return res.status(404).json({ error: 'No such reminder.' });
+      if (job.status !== 'approved') return res.status(400).json({ error: 'Not scheduled.' });
+      job.okToSend = true;
+      const today = new Date().toISOString().slice(0, 10);
+      let sent = false;
+      if (job.sendOn <= today && !job.sentAt) {
+        try {
+          const auds = await readJSON('audiences.json', {}), dirs = await readJSON('directors.json', {});
+          const r = await sendJob(job, { directors: dirs, audiences: auds });
+          job.sentAt = new Date().toISOString(); job.sentCount = r.sent; sent = true;
+        } catch (e) { /* keep okToSend; the daily job will retry */ }
+      }
+      all[id] = job;
+      await writeJSON(KEY, all);
+      return res.status(200).json({ ok: true, id, status: job.sentAt ? 'sent' : 'confirmed', sentNow: sent });
     } else {
       return res.status(400).json({ error: 'Unknown action.' });
     }
