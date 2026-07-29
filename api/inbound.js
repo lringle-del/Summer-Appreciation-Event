@@ -1,8 +1,10 @@
 import { readJSON, writeJSON } from '../lib/blobstore.js';
 import { sendJob, tokenFor } from '../lib/sendJob.js';
+import { Resend } from 'resend';
 
 const SKEY = 'schedule.json', AKEY = 'audiences.json', DKEY = 'directors.json';
 const APPROVER = 'lringle@abtaba.com';
+const FORWARD_TO = 'events@abtaba.com';
 
 /**
  * Resend inbound webhook (email.received). The preview email's Reply-To is a
@@ -24,7 +26,19 @@ export default async function handler(req, res) {
   const fromRaw = typeof data.from === 'string' ? data.from : ((data.from && data.from.email) || data.sender || '');
 
   const addr = toList.map((a) => a.toLowerCase()).find((a) => a.startsWith('approve.') && a.includes('@'));
-  if (!addr) return res.status(200).json({ ignored: 'no approve address' });
+  if (!addr) {
+    // Not an approval reply — a message landed on updates.abtaba.com. Forward it to a human so nothing is lost.
+    try {
+      const subj = data.subject || '(no subject)';
+      const text = data.text || data.body || data['stripped-text'] || '(The message body is stored in Resend → Inbound for 30 days.)';
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
+        from: process.env.RESEND_FROM, to: [FORWARD_TO], replyTo: fromRaw || undefined,
+        subject: 'Fwd (reply): ' + subj,
+        text: `A reply came in to: ${toList.join(', ')}\nFrom: ${fromRaw}\n\n${text}`,
+      });
+    } catch { /* best effort */ }
+    return res.status(200).json({ forwarded: true });
+  }
 
   const parts = addr.split('@')[0].split('.'); // approve.<eventId>.<key>.<token>
   if (parts.length < 4 || parts[0] !== 'approve') return res.status(200).json({ ignored: 'bad address' });
