@@ -259,6 +259,7 @@
 const FROM_NAME = "Above & Beyond ABA";
 const ORGANIZER = "Liba";
 const REPLY_TO = "events@abtaba.com";  // replies land in this real inbox (send is from the verified updates.abtaba.com)
+const RSVP_URL = "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=Mroc1uTzJEKDyxHCW7gZ0jjOWHonDFNFp2Wp8sxbuP5UOFpCRFVCSTlITVE3TlJRUTBXUEI1SzE0US4u";
 const EVENTS = [
   {id:"co", state:"Colorado", city:"Centennial", label:"Colorado", venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"", date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null, notes:""},
   {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"8400 N Oklahoma Ave, Oklahoma City, OK 73114", url:"https://chickennpickle.com/location/oklahoma-city/", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
@@ -343,6 +344,7 @@ function template(e,r){
   const link=e.url?("\n🔗 "+e.url):"";
   const blurb=e.blurb?("\n"+e.blurb+"\n"):"";
   const details=`📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}`;
+  const rsvp=`\n\nPlanning to come but haven't RSVP'd yet? Please let us know here so we have an accurate headcount:\n${RSVP_URL}`;
   if(r.kind==="pl"){
     const pl=getPL(e.id);
     return {
@@ -353,25 +355,25 @@ function template(e,r){
   if(r.extra){
     return {
       subject:`Save the date: ${place} Summer Appreciation Event — ${sd}`,
-      body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event. Please note the event date below:\n\n${details}\n${blurb}\nWe'll follow up with additional reminders as the date approaches. We look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
+      body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event. Please note the event date below:\n\n${details}\n${blurb}\nWe'll follow up with additional reminders as the date approaches. We look forward to seeing you there.${rsvp}\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   if(r.off===0){
     return {
       subject:`Today! See you at ${e.venue} — ${e.time}`,
-      body:`Hi there,\n\nToday's the day! We're looking forward to celebrating you and all your hard work this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nSee you there!\n\nWarm regards,\nThe ${FROM_NAME} Team`
+      body:`Hi there,\n\nToday's the day! We're looking forward to celebrating you and all your hard work this evening.\n\n📅 Today, ${long}\n🕕 ${e.time}\n📍 ${where}${link}\n${blurb}\nSee you there!${rsvp}\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   const days=Math.abs(r.off);
   if(days===2){
     return {
       subject:`2 days away — see you ${sd} at ${e.venue}`,
-      body:`Hi there,\n\nJust two days to go! We can't wait to celebrate you and everything you've accomplished at the Above & Beyond ABA Summer Appreciation Event. Here's a quick reminder of the details:\n\n${details}\n${blurb}\nWe'd love to see you there — please plan to arrive a few minutes early, and kindly reply if anything has changed so we can update our headcount.\n\nWarm regards,\nThe ${FROM_NAME} Team`
+      body:`Hi there,\n\nJust two days to go! We can't wait to celebrate you and everything you've accomplished at the Above & Beyond ABA Summer Appreciation Event. Here's a quick reminder of the details:\n\n${details}\n${blurb}\nWe'd love to see you there — please plan to arrive a few minutes early, and kindly reply if anything has changed so we can update our headcount.${rsvp}\n\nWarm regards,\nThe ${FROM_NAME} Team`
     };
   }
   return {
     subject:`See you ${sd} at ${e.venue}`,
-    body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event, and we hope you'll join us. Here are the details:\n\n${details}\n${blurb}\nPlease plan to arrive a few minutes early. If your plans have changed, kindly reply so we can update our headcount.\n\nWe look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
+    body:`Hi there,\n\nWe're very excited to celebrate you and all your hard work at the Above & Beyond ABA Summer Appreciation Event, and we hope you'll join us. Here are the details:\n\n${details}\n${blurb}\nPlease plan to arrive a few minutes early. If your plans have changed, kindly reply so we can update our headcount.${rsvp}\n\nWe look forward to seeing you there.\n\nWarm regards,\nThe ${FROM_NAME} Team`
   };
 }
 function getEmail(e,r){
