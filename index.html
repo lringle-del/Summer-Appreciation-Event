@@ -253,9 +253,17 @@ function dedupe(records){
   }
   return out;
 }
+/* People who told us they can no longer attend — filtered out of every count so
+   the headcount stays accurate. Keyed by "email|location" (email lowercased,
+   location as stored) so it's event-specific and survives re-importing the export. */
+const CANCELLED = new Set([
+  "rgonzalezferreira@abtaba.com|Raleigh, NC", // Rebecca Gonzalez Ferreira
+  "hcooper@abtaba.com|Raleigh, NC",           // Hannah Cooper
+]);
+function isCancelled(r){ return CANCELLED.has((r.email||"").trim().toLowerCase()+"|"+(r.location||"")); }
 function activeRecords(){
   const tset=testEmails(DATA);
-  let recs=dedupe(DATA);
+  let recs=dedupe(DATA).filter(r=>!isCancelled(r));
   if(hideTests) recs=recs.filter(r=>!tset.has((r.email||"").toLowerCase()));
   return {recs,tset};
 }
