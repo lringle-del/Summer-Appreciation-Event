@@ -344,7 +344,7 @@ function template(e,r){
   const link=e.url?("\n🔗 "+e.url):"";
   const blurb=e.blurb?("\n"+e.blurb+"\n"):"";
   const details=`📅 ${long}\n🕕 ${e.time}\n📍 ${where}${link}`;
-  const rsvp=`\n\nPlanning to come but haven't RSVP'd yet? Please let us know here so we have an accurate headcount:\n${RSVP_URL}`;
+  const rsvp=`\n\nPlanning to come but haven't RSVP'd yet? RSVP here: ${RSVP_URL} to let us know so we have an accurate headcount.`;
   if(r.kind==="pl"){
     const pl=getPL(e.id);
     return {
