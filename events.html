@@ -263,12 +263,12 @@ const RSVP_URL = "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=Mroc1
 const EVENTS = [
   {id:"co", state:"Colorado", city:"Centennial", label:"Colorado", venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"", date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null, notes:""},
   {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"8400 N Oklahoma Ave, Oklahoma City, OK 73114", url:"https://chickennpickle.com/location/oklahoma-city/", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, extras:[{key:"att1", date:"2026-08-04", abbr:"−1 day", name:"Day-before reminder"}], notes:""},
-  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"ZincHouse Winery & Brewery", address:"6225 Wake Forest Hwy, Durham, NC 27703", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, extras:[{key:"att1", date:"2026-08-04", abbr:"−1 day", name:"Day-before reminder"}], notes:""},
+  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"ZincHouse Winery & Brewery", address:"6225 Wake Forest Hwy, Durham, NC 27703", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, extras:[{key:"att1", date:"2026-08-04", abbr:"−1 day", name:"Day-before reminder"}], extraBcc:["JCertoma@abtaba.com","rmoller@abtaba.com"], notes:""},
   {id:"tulsa", state:"Oklahoma", city:"Tulsa", label:"Tulsa, OK", venue:"Courts & Commons", address:"7921 E 119th Dr, Bixby, OK 74008", url:"", date:"2026-08-06", time:"7:00–9:00 PM", est:75, rsvps:34, budget:null, perPerson:null, notes:""},
   {id:"omaha", state:"Nebraska", city:"Omaha", label:"Nebraska", venue:"Backlot Pizza & Kitchen (Elkhorn)", address:"6200 South 205th Plaza, Omaha, NE 68022", url:"https://www.backlotpizzaandkitchen.com/location/backlot-pizza-elkhorn/", date:"2026-08-10", time:"6:30–8:00 PM (dinner)", est:500, rsvps:197, budget:20000, perPerson:40, notes:"Dinner at Backlot Pizza 6:30–8:00, then a movie at ACX Cinemas (Moana 7:15, The Odyssey 7:30, Spider-Man 8:00).", blurb:"Here's the plan for the evening:\n1) Join us for dinner at Backlot Pizza & Kitchen from 6:30–8:00 PM.\n2) Right after dinner, walk next door to ACX Cinemas and go to the movie at the showtime you already selected:\n   • Moana — 7:15 PM\n   • The Odyssey — 7:30 PM\n   • Spider-Man: Brand New Day — 8:00 PM"},
   {id:"atlanta", state:"Georgia", city:"Atlanta (Sandy Springs)", label:"Atlanta, GA", venue:"Hudson Grille", address:"6317 Roswell Rd, Sandy Springs, GA 30328", url:"https://hudsongrille.com/", date:"2026-08-10", time:"5:30–9:00 PM", est:250, rsvps:117, budget:10000, perPerson:40, notes:"Venue phone: (404) 554-8282"},
   {id:"slc", state:"Utah", city:"Salt Lake City", label:"Utah", venue:"Red Iguana 2", address:"866 W South Temple, Salt Lake City, UT 84116", url:"", date:"2026-08-18", time:"6:30–8:30 PM", est:40, rsvps:12, budget:1200, perPerson:30, notes:"Date moved from the 19th to the 18th."},
-  {id:"ncharlotte", state:"North Carolina", city:"North Charlotte", label:"North Charlotte, NC", venue:"VBGB Beer Hall & Gardens", address:"920 Hamilton St, Charlotte, NC 28206", url:"https://vbgbuptown.com/", date:"2026-08-19", time:"6:30–9:30 PM", est:175, rsvps:90, budget:14000, perPerson:80, notes:""},
+  {id:"ncharlotte", state:"North Carolina", city:"North Charlotte", label:"North Charlotte, NC", venue:"VBGB Beer Hall & Gardens", address:"920 Hamilton St, Charlotte, NC 28206", url:"https://vbgbuptown.com/", date:"2026-08-19", time:"6:30–9:30 PM", est:175, rsvps:90, budget:14000, perPerson:80, extraBcc:["JCertoma@abtaba.com","rmoller@abtaba.com"], notes:""},
   {id:"va", state:"Virginia", city:"", label:"Virginia", venue:"Topgolf Loudoun", address:"20356 Commonwealth Center Dr, Ashburn, VA 20147", url:"https://topgolf.com/us/loudoun/", date:"2026-08-20", time:"5:00–7:00 PM", est:60, rsvps:9, budget:1947, perPerson:null, extras:[{key:"early", date:"2026-08-09", abbr:"Aug 9", name:"Save-the-date reminder", extra:true}], notes:""},
   {id:"indiana", state:"Indiana", city:"Indianapolis", label:"Indiana", venue:"Pins Mechanical Co.", address:"856 Carrollton Ave, Indianapolis, IN 46202", url:"https://www.pinsbar.com/locations/indianapolis", date:"2026-09-09", time:"6:30 PM", est:100, rsvps:19, budget:3000, perPerson:null, notes:""},
 ];
@@ -549,7 +549,10 @@ function buildJob(e,r){
   const body=bEl?bEl.value:getEmail(e,r).body;
   const job={eventId:e.id,key:r.key,kind:r.kind,label:e.label,sendOn:isoDate(r.date),subject,body,replyTo:REPLY_TO};
   if(r.kind==="pl"){ job.plEmail=getPL(e.id).email; const dir=getDirector(e.id); if(dir) job.bcc=[dir]; }
-  if(r.kind==="att" && (r.key==="att3"||r.key==="att0")){ const dir=getDirector(e.id); if(dir) job.dirBcc=[dir]; }
+  if(r.kind==="att"){
+    if(e.extraBcc&&e.extraBcc.length) job.dirBcc=e.extraBcc.slice();
+    else if(r.key==="att3"||r.key==="att0"){ const dir=getDirector(e.id); if(dir) job.dirBcc=[dir]; }
+  }
   return job;
 }
 async function scheduleAction(id,action,job){
