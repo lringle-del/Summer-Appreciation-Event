@@ -262,14 +262,14 @@ const REPLY_TO = "events@abtaba.com";  // replies land in this real inbox (send 
 const RSVP_URL = "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=Mroc1uTzJEKDyxHCW7gZ0jjOWHonDFNFp2Wp8sxbuP5UOFpCRFVCSTlITVE3TlJRUTBXUEI1SzE0US4u";
 const EVENTS = [
   {id:"co", state:"Colorado", city:"Centennial", label:"Colorado", venue:"Topgolf", address:"10601 East Easter Avenue, Centennial, CO", url:"", date:"2026-07-28", time:"6:00–8:00 PM", est:50, rsvps:20, budget:2500, perPerson:null, notes:""},
-  {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"8400 N Oklahoma Ave, Oklahoma City, OK 73114", url:"https://chickennpickle.com/location/oklahoma-city/", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, notes:""},
-  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"ZincHouse Winery & Brewery", address:"6225 Wake Forest Hwy, Durham, NC 27703", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, notes:""},
+  {id:"okc", state:"Oklahoma", city:"Oklahoma City", label:"Oklahoma City, OK", venue:"Chicken N Pickle", address:"8400 N Oklahoma Ave, Oklahoma City, OK 73114", url:"https://chickennpickle.com/location/oklahoma-city/", date:"2026-08-05", time:"7:00–9:00 PM", est:125, rsvps:47, budget:10000, perPerson:80, extras:[{key:"att1", date:"2026-08-04", abbr:"−1 day", name:"Day-before reminder"}], notes:""},
+  {id:"raleigh", state:"North Carolina", city:"Raleigh", label:"Raleigh, NC", venue:"ZincHouse Winery & Brewery", address:"6225 Wake Forest Hwy, Durham, NC 27703", url:"https://www.zinchouse.com/", date:"2026-08-05", time:"5:30–9:30 PM", est:75, rsvps:53, budget:6000, perPerson:80, extras:[{key:"att1", date:"2026-08-04", abbr:"−1 day", name:"Day-before reminder"}], notes:""},
   {id:"tulsa", state:"Oklahoma", city:"Tulsa", label:"Tulsa, OK", venue:"Courts & Commons", address:"7921 E 119th Dr, Bixby, OK 74008", url:"", date:"2026-08-06", time:"7:00–9:00 PM", est:75, rsvps:34, budget:null, perPerson:null, notes:""},
   {id:"omaha", state:"Nebraska", city:"Omaha", label:"Nebraska", venue:"Backlot Pizza & Kitchen (Elkhorn)", address:"6200 South 205th Plaza, Omaha, NE 68022", url:"https://www.backlotpizzaandkitchen.com/location/backlot-pizza-elkhorn/", date:"2026-08-10", time:"6:30–8:00 PM (dinner)", est:500, rsvps:197, budget:20000, perPerson:40, notes:"Dinner at Backlot Pizza 6:30–8:00, then a movie at ACX Cinemas (Moana 7:15, The Odyssey 7:30, Spider-Man 8:00).", blurb:"Here's the plan for the evening:\n1) Join us for dinner at Backlot Pizza & Kitchen from 6:30–8:00 PM.\n2) Right after dinner, walk next door to ACX Cinemas and go to the movie at the showtime you already selected:\n   • Moana — 7:15 PM\n   • The Odyssey — 7:30 PM\n   • Spider-Man: Brand New Day — 8:00 PM"},
   {id:"atlanta", state:"Georgia", city:"Atlanta (Sandy Springs)", label:"Atlanta, GA", venue:"Hudson Grille", address:"6317 Roswell Rd, Sandy Springs, GA 30328", url:"https://hudsongrille.com/", date:"2026-08-10", time:"5:30–9:00 PM", est:250, rsvps:117, budget:10000, perPerson:40, notes:"Venue phone: (404) 554-8282"},
   {id:"slc", state:"Utah", city:"Salt Lake City", label:"Utah", venue:"Red Iguana 2", address:"866 W South Temple, Salt Lake City, UT 84116", url:"", date:"2026-08-18", time:"6:30–8:30 PM", est:40, rsvps:12, budget:1200, perPerson:30, notes:"Date moved from the 19th to the 18th."},
   {id:"ncharlotte", state:"North Carolina", city:"North Charlotte", label:"North Charlotte, NC", venue:"VBGB Beer Hall & Gardens", address:"920 Hamilton St, Charlotte, NC 28206", url:"https://vbgbuptown.com/", date:"2026-08-19", time:"6:30–9:30 PM", est:175, rsvps:90, budget:14000, perPerson:80, notes:""},
-  {id:"va", state:"Virginia", city:"", label:"Virginia", venue:"Topgolf Loudoun", address:"20356 Commonwealth Center Dr, Ashburn, VA 20147", url:"https://topgolf.com/us/loudoun/", date:"2026-08-20", time:"5:00–7:00 PM", est:60, rsvps:9, budget:1947, perPerson:null, extras:[{key:"early", date:"2026-08-09", abbr:"Aug 9", name:"Save-the-date reminder"}], notes:""},
+  {id:"va", state:"Virginia", city:"", label:"Virginia", venue:"Topgolf Loudoun", address:"20356 Commonwealth Center Dr, Ashburn, VA 20147", url:"https://topgolf.com/us/loudoun/", date:"2026-08-20", time:"5:00–7:00 PM", est:60, rsvps:9, budget:1947, perPerson:null, extras:[{key:"early", date:"2026-08-09", abbr:"Aug 9", name:"Save-the-date reminder", extra:true}], notes:""},
   {id:"indiana", state:"Indiana", city:"Indianapolis", label:"Indiana", venue:"Pins Mechanical Co.", address:"856 Carrollton Ave, Indianapolis, IN 46202", url:"https://www.pinsbar.com/locations/indianapolis", date:"2026-09-09", time:"6:30 PM", est:100, rsvps:19, budget:3000, perPerson:null, notes:""},
 ];
 const DEFAULT_TASKS = [
@@ -302,7 +302,7 @@ function reminders(e){
     {kind:"att", key:"att2", off:-2, abbr:"−2 days",   name:"Attendee reminder #2", toLabel:()=>e.rsvps+" attendees"},
     {kind:"att", key:"att0", off:0,  abbr:"Day-of",    name:"Day-of reminder",      toLabel:()=>e.rsvps+" attendees"},
   ].map(r=>({...r, date:addDays(d,r.off)}));
-  if(e.extras) e.extras.forEach(x=>{ const xd=ymd(x.date); base.push({kind:"att", key:x.key, off:dbetween(xd,d), abbr:x.abbr||"Extra", name:x.name||"Reminder", extra:true, date:xd, toLabel:()=>e.rsvps+" attendees"}); });
+  if(e.extras) e.extras.forEach(x=>{ const xd=ymd(x.date); base.push({kind:x.kind||"att", key:x.key, off:dbetween(xd,d), abbr:x.abbr||"Extra", name:x.name||"Reminder", extra:!!x.extra, date:xd, toLabel:()=>e.rsvps+" attendees"}); });
   base.sort((a,b)=>a.date-b.date);
   return base;
 }
@@ -365,6 +365,12 @@ function template(e,r){
     };
   }
   const days=Math.abs(r.off);
+  if(days===1){
+    return {
+      subject:`Tomorrow! ${place} Summer Appreciation Event — ${e.time}`,
+      body:`Hi there,\n\nJust one more day! We can't wait to celebrate you and everything you've accomplished tomorrow evening at the Above & Beyond ABA Summer Appreciation Event. Here's everything you need:\n\n${details}\n${blurb}\nPlease plan to arrive a few minutes early, and kindly reply if anything has changed so we can update our headcount.${rsvp}\n\nSee you tomorrow!\n\nWarm regards,\nThe ${FROM_NAME} Team`
+    };
+  }
   if(days===2){
     return {
       subject:`2 days away — see you ${sd} at ${e.venue}`,
