@@ -259,6 +259,7 @@ function dedupe(records){
 const CANCELLED = new Set([
   "rgonzalezferreira@abtaba.com|Raleigh, NC", // Rebecca Gonzalez Ferreira
   "hcooper@abtaba.com|Raleigh, NC",           // Hannah Cooper
+  "kbloomer@abtaba.com|Raleigh, NC",          // Kayla Bloomer
 ]);
 function isCancelled(r){ return CANCELLED.has((r.email||"").trim().toLowerCase()+"|"+(r.location||"")); }
 function activeRecords(){
