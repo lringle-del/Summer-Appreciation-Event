@@ -99,6 +99,13 @@
   .pill.plus{background:var(--sky);color:var(--midnight)}
   .pill.head{background:var(--midnight);color:var(--vanilla)}
   .state-body{padding:0 8px 10px}
+  .movie-bd{margin:2px 14px 14px;padding:14px 16px;background:var(--parchment);border-radius:12px}
+  .movie-bd .mb-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:10px}
+  .movie-bd .mb-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+  .movie-bd .mb-row:last-child{border-bottom:none}
+  .movie-bd .mb-name{font-weight:600;color:var(--ink)}
+  .movie-bd .mb-count{white-space:nowrap;font-family:'Libre Caslon Display',serif;font-size:20px;color:var(--midnight)}
+  .movie-bd .mb-sub{font-family:'Neue Montreal','Inter',sans-serif;font-size:12px;color:var(--muted);font-weight:600;margin-left:6px}
   table{width:100%;border-collapse:collapse;font-size:14px}
   thead th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;padding:10px 14px;border-bottom:2px solid var(--parchment)}
   tbody td{padding:10px 14px;border-bottom:1px solid var(--parchment);vertical-align:top}
@@ -331,6 +338,16 @@ function render(){
       const rows=groups[s].slice().sort((a,b)=>a.name.localeCompare(b.name));
       const pl=rows.filter(r=>r.plusOne==="Yes").length;
       const hasMovie=rows.some(r=>r.movie);
+      // movie breakdown (Nebraska): total attendees incl. plus-ones per movie
+      let movieBD="";
+      if(hasMovie){
+        const agg={};
+        rows.forEach(r=>{const m=(r.movie&&r.movie.trim())?r.movie.trim():"No movie selected";const a=agg[m]||(agg[m]={rsvp:0,plus:0});a.rsvp++;if(r.plusOne==="Yes")a.plus++;});
+        const keys=Object.keys(agg).sort((a,b)=>(agg[b].rsvp+agg[b].plus)-(agg[a].rsvp+agg[a].plus));
+        movieBD=`<div class="movie-bd"><div class="mb-title">By movie · total attendees incl. plus-ones</div>`+
+          keys.map(m=>{const a=agg[m],head=a.rsvp+a.plus;return `<div class="mb-row"><span class="mb-name">${esc(m)}</span><span class="mb-count">${head}<span class="mb-sub">${a.rsvp} RSVPs + ${a.plus}</span></span></div>`;}).join("")+
+          `</div>`;
+      }
       const body=rows.map(r=>`<tr>
         <td><b>${esc(r.name||"—")}</b>${r.email&&tset.has(r.email.toLowerCase())?' <span class="loc-chip">(test)</span>':''}</td>
         <td class="email hide-sm">${r.email?`<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:'—'}</td>
@@ -346,7 +363,7 @@ function render(){
           <span class="pill plus">+${pl} plus-ones</span>
           <span class="pill head">${rows.length+pl} total</span>
         </div>
-        <div class="state-body"><table>
+        <div class="state-body">${movieBD}<table>
           <thead><tr><th>Name</th><th class="hide-sm">Email</th><th>Event</th><th>Plus one</th>${hasMovie?'<th class="hide-sm">Movie</th>':''}</tr></thead>
           <tbody>${body}</tbody>
         </table></div>
