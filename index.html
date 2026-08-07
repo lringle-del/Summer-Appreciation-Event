@@ -284,9 +284,22 @@ const CANCELLED = new Set([
   "amirdavidalz@gmail.com|Nebraska",          // Amir Al-Zuheri (+ plus-one)
 ]);
 function isCancelled(r){ return CANCELLED.has((r.email||"").trim().toLowerCase()+"|"+(r.location||"")); }
+/* People who asked to switch showtimes after submitting the form. Same
+   "email|location" key as CANCELLED so a re-import of the export doesn't undo
+   them. The value must match the movie label the form produces, otherwise it
+   won't group with everyone else in the by-movie breakdown. */
+const MOVIE_OVERRIDES = {
+  "alexmorale889@gmail.com|Nebraska": "Spider-Man: Brand New Day (8:00PM)", // Alejandro Morales — was The Odyssey
+};
+function applyMovieOverrides(recs){
+  return recs.map(r=>{
+    const m = MOVIE_OVERRIDES[(r.email||"").trim().toLowerCase()+"|"+(r.location||"")];
+    return m ? Object.assign({}, r, {movie:m}) : r;
+  });
+}
 function activeRecords(){
   const tset=testEmails(DATA);
-  let recs=dedupe(DATA).filter(r=>!isCancelled(r));
+  let recs=applyMovieOverrides(dedupe(DATA).filter(r=>!isCancelled(r)));
   if(hideTests) recs=recs.filter(r=>!tset.has((r.email||"").toLowerCase()));
   return {recs,tset};
 }
